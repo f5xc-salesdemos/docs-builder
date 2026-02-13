@@ -31,23 +31,35 @@ What still references the old org (and why):
 | `.github/workflows/*.yml` | `robinmordasiewicz/f5xc-template` | GitHub Actions `uses:` requires static strings; updates in Phase 3 |
 | `.github/workflows/build-image.yml` | `robinmordasiewicz/f5xc-template` dispatch API | Same — updates in Phase 3 |
 | `.github/dependabot.yml` | `robinmordasiewicz` assignee | User is still the maintainer; team handle TBD |
-| `package.json` | `@robinmordasiewicz/f5xc-docs-theme` | npm package re-publishes under new scope in Phase 2 |
 | `CONTRIBUTING.md` | `@robinmordasiewicz` CODEOWNER | User is still the maintainer |
-| `docs/01-architecture.mdx` | `@robinmordasiewicz/f5xc-docs-theme` | Documents current npm alias; annotated with migration note |
 | `docs/05-ci-cd.mdx` | `robinmordasiewicz/f5xc-template` | Workflow code snippets document current state accurately |
 
-### Phase 2: docs-theme (future)
+### Phase 2: docs-theme
 
-Migrate `robinmordasiewicz/f5xc-docs-theme` to
+**Status:** Complete
+
+Migrated `robinmordasiewicz/f5xc-docs-theme` to
 `f5xc-salesdemos/docs-theme`.
+
+Changes made:
+
+- Created `f5xc-SalesDemos/docs-theme` repo and pushed all source files
+- Updated `package.json` URLs (homepage, repository, bugs) to new org
+- Updated `DOCS_SITE` default to `https://f5xc-salesdemos.github.io`
+- Updated `DOCS_HOME` default in `Banner.astro` and `SiteTitle.astro`
+- Updated `playwright.config.ts` base URL
+- Updated `dispatch-downstream.yml` target to `f5xc-SalesDemos/docs-builder`
+- Deleted `auto-merge.yml` (consistent with docs-builder)
+- Added TODO comments for Phase 3 template migration
+- Updated `docs/01-architecture.mdx` npm alias in this repo
+- npm package name stays as `f5xc-docs-theme` (unscoped)
 
 Checklist:
 
-- [ ] Create `f5xc-salesdemos/docs-theme` repo
-- [ ] Re-publish npm package under `@f5xc-salesdemos` scope
-- [ ] Update `package.json` alias in this repo
-- [ ] Update `docs/01-architecture.mdx` npm alias example
-- [ ] Remove Phase 2 migration note from `docs/01-architecture.mdx`
+- [x] Create `f5xc-salesdemos/docs-theme` repo
+- [x] Update `package.json` URLs in theme repo
+- [x] Update `docs/01-architecture.mdx` npm alias example
+- [x] Remove Phase 2 migration note from `docs/01-architecture.mdx`
 
 ### Phase 3: docs-control (future)
 

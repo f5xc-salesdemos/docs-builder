@@ -36,7 +36,7 @@ This means the builder repo itself ships with an empty `src/content/docs/` direc
 The Starlight theme is published as a separate npm package. `package.json` uses an npm alias to map a short name to the scoped registry package:
 
 ```json
-"f5xc-docs-theme": "npm:@robinmordasiewicz/f5xc-docs-theme@^1.1.0"  // migrates to @f5xc-salesdemos scope in Phase 2
+"f5xc-docs-theme": "^1.29.0"
 ```
 
 The theme package owns `astro.config.mjs`. At build time the entrypoint copies it into the project root:
