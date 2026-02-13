@@ -1,0 +1,109 @@
+---
+title: Architecture
+description: System design, directory layout, theme system, and build pipeline for the docs builder.
+sidebar:
+  order: 5
+---
+
+## Overview
+
+The docs builder is a containerized [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) system. Content repos provide Markdown/MDX files; the builder supplies the framework, theme, and build logic. The two halves meet at build time inside a Docker container.
+
+## Content Injection Model
+
+Content repos keep their documentation in a `docs/` directory. At build time the container copies those files into `src/content/docs/`, where Astro's content collection picks them up.
+
+```
+content-repo/
+  docs/           ← authored by content teams
+    index.mdx
+    guide.mdx
+
+f5xc-docs-builder/
+  src/content/docs/ ← empty at rest (.gitkeep)
+```
+
+The entrypoint script (`docker/entrypoint.sh`) performs the copy:
+
+```sh
+cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+```
+
+This means the builder repo itself ships with an empty `src/content/docs/` directory. Content only appears at build time.
+
+## Theme System
+
+The Starlight theme is published as a separate npm package. `package.json` uses an npm alias to map a short name to the scoped registry package:
+
+```json
+"f5xc-docs-theme": "npm:@robinmordasiewicz/f5xc-docs-theme@^1.1.0"  // migrates to @f5xc-salesdemos scope in Phase 2
+```
+
+The theme package owns `astro.config.mjs`. At build time the entrypoint copies it into the project root:
+
+```sh
+cp /app/node_modules/f5xc-docs-theme/astro.config.mjs /app/astro.config.mjs
+```
+
+This keeps configuration centralized — content repos and the builder itself do not maintain their own Astro config.
+
+## Source Directory Layout
+
+```
+src/
+  components/
+    PlaceholderForm.tsx          # React form for editing placeholder values
+    PlaceholderFormWrapper.astro # Astro wrapper, loads DOM script and global CSS
+  content/
+    docs/                        # Mount point for injected content
+  content.config.ts              # Starlight content collection definition
+  data/
+    placeholders.json            # Placeholder token definitions
+  lib/
+    placeholder-store.ts         # State management: load, save, compute, emit
+  scripts/
+    placeholder-dom.ts           # Client-side DOM walker and Mermaid renderer
+```
+
+## Content Collection
+
+`src/content.config.ts` defines a single `docs` collection using Starlight's loader and schema:
+
+```ts
+import { defineCollection } from 'astro:content';
+import { docsLoader } from '@astrojs/starlight/loaders';
+import { docsSchema } from '@astrojs/starlight/schema';
+
+export const collections = {
+  docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
+};
+```
+
+Any `.md` or `.mdx` file placed in `src/content/docs/` becomes a page in the built site.
+
+## Build Flow
+
+The following diagram shows the end-to-end build pipeline when the Docker container runs:
+
+```mermaid
+flowchart LR
+    A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
+    B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
+    D[npm registry] -->|npm install| E[node_modules/<br/>f5xc-docs-theme]
+    E -->|cp astro.config| F[astro.config.mjs]
+    C --> G[astro build]
+    F --> G
+    G --> H[dist/<br/>static HTML]
+    H -->|cp| I[/output]
+```
+
+## Build-Time vs Client-Time Processing
+
+| Concern | When | How |
+|---------|------|-----|
+| MDX → HTML | Build time | Astro compiler |
+| Mermaid code blocks → container divs | Build time | `remark-mermaid.mjs` plugin (from `f5xc-docs-theme`) |
+| Placeholder tokens → interactive spans | Client time | `placeholder-dom.ts` TreeWalker |
+| Mermaid SVG rendering | Client time | `mermaid` CDN import in `placeholder-dom.ts` |
+| Placeholder form state | Client time | `placeholder-store.ts` + localStorage |
+| Astro page transitions | Client time | `astro:page-load` event listener |

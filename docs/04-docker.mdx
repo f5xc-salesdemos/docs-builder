@@ -1,0 +1,186 @@
+---
+title: Docker Build
+description: Dockerfile layers, entrypoint orchestration, environment variables, and local usage.
+sidebar:
+  order: 4
+---
+
+The builder ships as a Docker image. Content repos run it to produce static HTML without installing Node.js or Astro locally.
+
+## Dockerfile
+
+`docker/Dockerfile` uses a multi-step build on `node:24-alpine`:
+
+```dockerfile
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+# Install deps (cached layer)
+COPY package*.json ./
+RUN npm ci
+
+# Copy framework code
+COPY . .
+
+# Remove placeholder content
+RUN rm -rf src/content/docs/*
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+```
+
+### Layer Strategy
+
+| Layer | What | Why cached separately |
+|-------|------|----------------------|
+| 1 | `COPY package*.json` + `npm ci` | Dependencies change infrequently; caching this layer avoids re-downloading on every build |
+| 2 | `COPY . .` | Framework source code |
+| 3 | `rm -rf src/content/docs/*` | Cleans out any placeholder content so only injected content appears |
+| 4 | `COPY entrypoint.sh` | Build orchestration script |
+
+## Entrypoint
+
+`docker/entrypoint.sh` runs each time the container starts. It performs these steps in order:
+
+### Step 1: Update Dependencies
+
+```sh
+npm install
+npm update
+```
+
+Ensures the theme package and all dependencies are at their latest compatible versions.
+
+### Step 2: Copy Theme Config
+
+```sh
+cp /app/node_modules/f5xc-docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/f5xc-docs-theme/src/content.config.ts /app/src/content.config.ts
+```
+
+Copies `astro.config.mjs` and `content.config.ts` from the theme package. The theme is the single source of truth for Astro configuration — see [Architecture](../01-architecture/) for the theme system design.
+
+### Step 3: Inject Content
+
+```sh
+if [ -d "$CONTENT_DIR" ]; then
+  cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+else
+  echo "ERROR: No content found at $CONTENT_DIR"
+  exit 1
+fi
+```
+
+Copies the mounted content into Astro's content collection directory. Exits with an error if the content directory is missing.
+
+### Step 4: Extract Title
+
+```sh
+if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
+  DOCS_TITLE=$(grep -m1 '^title:' /app/src/content/docs/index.mdx | sed 's/title: *["]*//;s/["]*$//')
+  export DOCS_TITLE
+fi
+```
+
+If `DOCS_TITLE` is not set via environment, extracts it from the `title:` frontmatter field of `index.mdx`.
+
+### Step 5: Extract Base Path
+
+```sh
+if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
+  DOCS_BASE="/${GITHUB_REPOSITORY#*/}"
+  export DOCS_BASE
+fi
+```
+
+Derives the site base path from the GitHub repository name (e.g., `owner/my-docs` becomes `/my-docs`).
+
+### Step 6: Build
+
+```sh
+npm run build
+```
+
+Runs `astro build`, producing static output in `/app/dist/`.
+
+### Step 7: Copy Output
+
+```sh
+if [ -d "$OUTPUT_DIR" ]; then
+  cp -r /app/dist/* "$OUTPUT_DIR"/
+fi
+```
+
+Copies the built site to the output mount point.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONTENT_DIR` | `/content/docs` | Path to the mounted content directory |
+| `OUTPUT_DIR` | `/output` | Path where the built site is copied |
+| `DOCS_TITLE` | *(extracted from index.mdx)* | Site title passed to the Astro config |
+| `DOCS_DESCRIPTION` | *(extracted from index.mdx)* | Site description from frontmatter |
+| `DOCS_BASE` | *(derived from `GITHUB_REPOSITORY`)* | Base path for the site (e.g., `/my-docs`) |
+| `DOCS_SITE` | *(derived from `GITHUB_REPOSITORY_OWNER`)* | Site URL passed to the Astro config (e.g., `https://<owner>.github.io`) |
+| `GITHUB_REPOSITORY` | *(set by GitHub Actions)* | `owner/repo` string used to derive `DOCS_BASE` |
+| `GENERATE_PDF` | `false` | Enable PDF generation after build |
+| `PDF_FILENAME` | `docs` | Output filename for the generated PDF |
+| `LLMS_OPTIONAL_LINKS` | `[]` | JSON array of child site URLs for the `llms.txt` Optional section |
+
+## Local Usage
+
+To build documentation locally using Docker:
+
+```sh
+docker run --rm \
+  -v "$(pwd)/docs:/content/docs" \
+  -v "$(pwd)/output:/output" \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+This mounts the local `docs/` directory as content and writes the built site to `output/`.
+
+For content authors who want a live dev server workflow, see [Local Preview for Content Authors](../06-content-authors/).
+
+## Developer: Local Dev Server
+
+When working on the builder itself (components, plugins, theme integration), you can run Astro's dev server directly without Docker:
+
+```sh
+npm ci
+cp node_modules/f5xc-docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/f5xc-docs-theme/src/content.config.ts src/content.config.ts
+# Copy some test content into the content collection
+cp -r /path/to/test-content/* src/content/docs/
+DOCS_TITLE="Dev Test" npx astro dev --host
+```
+
+Open `http://localhost:4321`. Hot module replacement (HMR) works for component and plugin changes.
+
+:::note
+`astro.config.mjs` and `content.config.ts` come from the theme package and are not version-controlled in this repo. You must copy them from `node_modules` before running the dev server. The entrypoint handles this automatically in Docker builds.
+:::
+
+:::note
+`src/content/docs/` is emptied at image build time and gitignored. Place test content there manually — it will not be committed.
+:::
+
+## Image Registry
+
+The image is published to GitHub Container Registry:
+
+```
+ghcr.io/f5xc-salesdemos/docs-builder
+```
+
+Two tags are pushed on every build:
+
+| Tag | Description |
+|-----|-------------|
+| `latest` | Most recent build from `main` |
+| `<sha>` | Full Git commit SHA for reproducible builds |
+
+See [CI/CD and Governance](../05-ci-cd/) for the workflow that builds and publishes the image.

@@ -1,0 +1,20 @@
+name: Enforce Repository Settings
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/config/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  enforce:
+    # TODO: Update to f5xc-SalesDemos/docs-control when template repo is migrated (Phase 3)
+    uses: robinmordasiewicz/f5xc-template/.github/workflows/enforce-repo-settings.yml@main
+    secrets:
+      repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
