@@ -21,18 +21,6 @@ Changes made:
   `ghcr.io/f5xc-salesdemos/docs-builder`
 - Updated documentation examples (`docs/*.mdx`, `CLAUDE.md`,
   `MIGRATION.md`) to reference the new org
-- Added TODO comments to workflow files and `dependabot.yml` for
-  future migration phases
-
-What still references the old org (and why):
-
-| File | Reference | Reason |
-|------|-----------|--------|
-| `.github/workflows/*.yml` | `robinmordasiewicz/f5xc-template` | GitHub Actions `uses:` requires static strings; updates in Phase 3 |
-| `.github/workflows/build-image.yml` | `robinmordasiewicz/f5xc-template` dispatch API | Same — updates in Phase 3 |
-| `.github/dependabot.yml` | `robinmordasiewicz` assignee | User is still the maintainer; team handle TBD |
-| `CONTRIBUTING.md` | `@robinmordasiewicz` CODEOWNER | User is still the maintainer |
-| `docs/05-ci-cd.mdx` | `robinmordasiewicz/f5xc-template` | Workflow code snippets document current state accurately |
 
 ### Phase 2: docs-theme
 
@@ -50,39 +38,47 @@ Changes made:
 - Updated `playwright.config.ts` base URL
 - Updated `dispatch-downstream.yml` target to `f5xc-salesdemos/docs-builder`
 - Deleted `auto-merge.yml` (consistent with docs-builder)
-- Added TODO comments for Phase 3 template migration
 - Updated `docs/01-architecture.mdx` npm alias in this repo
 - npm package name stays as `f5xc-docs-theme` (unscoped)
 
-Checklist:
+### Phase 3: docs-control
 
-- [x] Create `f5xc-salesdemos/docs-theme` repo
-- [x] Update `package.json` URLs in theme repo
-- [x] Update `docs/01-architecture.mdx` npm alias example
-- [x] Remove Phase 2 migration note from `docs/01-architecture.mdx`
+**Status:** Complete
 
-### Phase 3: docs-control (future)
-
-Migrate `robinmordasiewicz/f5xc-template` to
+Migrated `robinmordasiewicz/f5xc-template` to
 `f5xc-salesdemos/docs-control`.
 
-Checklist:
+Changes made:
 
-- [ ] Create `f5xc-salesdemos/docs-control` repo
-- [ ] Update all workflow `uses:` references (4 workflow files)
-- [ ] Update `build-image.yml` dispatch API call
-- [ ] Update `docs/05-ci-cd.mdx` code snippets
-- [ ] Update `dependabot.yml` assignee to team handle
-- [ ] Remove all Phase 3 TODO comments
-- [ ] Remove remaining `robinmordasiewicz` references from `CONTRIBUTING.md`
+- Created `f5xc-salesdemos/docs-control` repo and pushed all source files
+- Deleted auto-merge workflows (reusable + caller)
+- Updated `downstream-repos.json` to `docs-builder` and `docs-theme` only
+- Updated `docs-sites.json` to migrated sites only
+- Disabled `allow_auto_merge` in default repo settings
+- Updated all org references from `robinmordasiewicz` to `f5xc-salesdemos`
+- Updated all repo references from `f5xc-template` to `docs-control`
+- Updated builder image refs to `ghcr.io/f5xc-salesdemos/docs-builder`
+- Updated GitHub Pages URLs to `f5xc-salesdemos.github.io`
+- Updated all workflow `uses:` references in docs-builder and docs-theme
+- Updated `build-image.yml` dispatch API call to docs-control
+- Updated `docs/05-ci-cd.mdx` and `docs/06-content-authors.mdx` code snippets
+
+## Remaining `robinmordasiewicz` References
+
+These references are intentional and correct:
+
+| File | Reference | Reason |
+|------|-----------|--------|
+| `.github/dependabot.yml` | `robinmordasiewicz` assignee | User is still the maintainer |
+| `CONTRIBUTING.md` | `@robinmordasiewicz` CODEOWNER | User is still the maintainer |
 
 ## Verification
 
-After each phase, run:
+After all phases, run:
 
 ```sh
 grep -r "robinmordasiewicz" --include="*.sh" --include="*.yml" --include="*.mdx" --include="*.md" --include="*.json"
 ```
 
-After Phase 3 completes, the only remaining references should be in
-this file (`MIGRATIONS.md`) documenting the migration history.
+The only remaining references should be the maintainer/CODEOWNER
+entries listed above.
