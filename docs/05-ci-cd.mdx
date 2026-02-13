@@ -32,7 +32,7 @@ Delegates to a reusable workflow in the template repository:
 ```yaml
 jobs:
   docs:
-    uses: robinmordasiewicz/f5xc-template/.github/workflows/github-pages-deploy.yml@main
+    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 Permissions: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Uses concurrency group `pages` with `cancel-in-progress: true` to avoid stale deployments.
@@ -101,7 +101,7 @@ Delegates to a reusable workflow in the template repository:
 ```yaml
 jobs:
   enforce:
-    uses: robinmordasiewicz/f5xc-template/.github/workflows/enforce-repo-settings-reusable.yml@main
+    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -112,7 +112,7 @@ Runs every 6 hours and on changes to the settings config file. Applies branch pr
 
 ### Centralized Template
 
-The `robinmordasiewicz/f5xc-template` repository is the single source of truth for (this will become `f5xc-salesdemos/docs-control` in a future migration phase):
+The `f5xc-salesdemos/docs-control` repository is the single source of truth for:
 
 - Reusable workflow definitions (docs deploy, repo settings enforcement)
 - Managed files synced across all repos in the organization

@@ -11,7 +11,6 @@ updates:
       prefix: "chore(deps):"
     labels:
       - "dependencies"
-    # TODO: Replace with f5xc-salesdemos team handle when available
     assignees:
       - "robinmordasiewicz"
     open-pull-requests-limit: 10
@@ -31,7 +30,6 @@ updates:
       prefix: "chore(deps):"
     labels:
       - "dependencies"
-    # TODO: Replace with f5xc-salesdemos team handle when available
     assignees:
       - "robinmordasiewicz"
     open-pull-requests-limit: 10

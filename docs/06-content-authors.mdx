@@ -13,7 +13,7 @@ Three repos collaborate to produce the final site:
 |------|----------|------|
 | **f5xc-docs-theme** | npm package | Astro/Starlight config, CSS, logos, plugins |
 | **f5xc-docs-builder** | Docker image | Pulls the theme at runtime, compiles MDX to static HTML |
-| **f5xc-template** | Reusable GitHub workflow | Orchestrates the container in CI, deploys to GitHub Pages |
+| **docs-control** | Reusable GitHub workflow | Orchestrates the container in CI, deploys to GitHub Pages |
 
 Content repos only depend on the Docker image — everything else is handled automatically.
 

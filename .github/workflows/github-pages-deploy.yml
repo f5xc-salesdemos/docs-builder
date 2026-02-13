@@ -18,5 +18,4 @@ concurrency:
 
 jobs:
   docs:
-    # TODO: Update to f5xc-salesdemos/docs-control when template repo is migrated (Phase 3)
-    uses: robinmordasiewicz/f5xc-template/.github/workflows/github-pages-deploy.yml@main
+    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
