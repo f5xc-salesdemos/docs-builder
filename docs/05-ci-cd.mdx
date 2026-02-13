@@ -5,7 +5,7 @@ sidebar:
   order: 6
 ---
 
-The repository uses five GitHub Actions workflows and a centralized template system for governance.
+The repository uses four GitHub Actions workflows and a centralized template system for governance.
 
 ## Workflows
 
@@ -13,7 +13,6 @@ The repository uses five GitHub Actions workflows and a centralized template sys
 |----------|------|---------|---------|
 | GitHub Pages Deploy | `github-pages-deploy.yml` | Push to `main` (`docs/**`), manual dispatch | Builds and deploys the documentation site to GitHub Pages |
 | Build and Publish Docker Image | `build-image.yml` | Push to `main` (`docker/**`, `package*.json`), daily cron, `repository_dispatch` | Builds the Docker image, pushes to GHCR, and dispatches rebuilds to downstream repos |
-| Auto Merge | `auto-merge.yml` | Pull request events | Automatically enables auto-merge on new PRs |
 | Require Linked Issue | `require-linked-issue.yml` | Pull request events | Blocks PRs that do not reference a GitHub issue |
 | Enforce Repository Settings | `enforce-repo-settings.yml` | Every 6 hours, push to settings config, manual dispatch | Applies standardized repo settings from the template |
 
@@ -67,24 +66,6 @@ After a successful build, the **dispatch** job triggers `github-pages-deploy.yml
 The daily cron ensures the image stays current even without code changes (picks up dependency updates). The `repository_dispatch` event allows external systems to trigger a rebuild.
 
 Only triggers on push when `docker/` files or `package*.json` change. Docs-only changes do not trigger an image rebuild.
-
-### Auto Merge
-
-```yaml
-on:
-  pull_request:
-    types: [opened, reopened, ready_for_review]
-```
-
-Delegates to a reusable workflow in the template repository:
-
-```yaml
-jobs:
-  auto-merge:
-    uses: robinmordasiewicz/f5xc-template/.github/workflows/auto-merge.yml@main
-```
-
-Permissions: `contents: write`, `pull-requests: write`. Automatically enables auto-merge on new or reopened PRs.
 
 ### Require Linked Issue
 

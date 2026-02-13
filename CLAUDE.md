@@ -21,11 +21,12 @@ workflows succeed, and local branches are cleaned.
    `gh pr checks <NUMBER>`, fix locally, push to
    trigger re-runs
 
-### Waiting for Auto-Merge (Step 6)
+### Waiting for Merge (Step 6)
 
-6. **Wait for auto-merge** — PRs merge automatically
-   (squash) once all CI checks pass. Poll until the
-   PR state is `MERGED`:
+6. **Wait for merge** — PRs require manual approval.
+   After CI checks pass, wait for a reviewer to
+   approve and merge. Poll until the PR state is
+   `MERGED`:
 
    ```
    gh pr view <NUMBER> --json state --jq '.state'
@@ -88,7 +89,7 @@ A task is **not complete** until ALL of the
 following are true:
 
 - GitHub issue created and linked to PR
-- PR merged to `main` via auto-merge
+- PR merged to `main`
 - All workflows triggered by the merge completed
   successfully
 - Local feature branch deleted

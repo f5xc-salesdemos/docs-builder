@@ -58,7 +58,7 @@ git checkout -b feature/42-add-rate-limiting
 ## Step 5: Review and Merge
 
 - All CI checks must pass before merge
-- Auto-merge is enabled — PRs merge automatically once all checks pass
+- PRs require manual approval before merging
 - Squash merge is preferred
 - The branch is automatically deleted after merge (`delete_branch_on_merge` is enabled)
 
