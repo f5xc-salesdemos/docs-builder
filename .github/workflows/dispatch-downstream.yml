@@ -1,0 +1,39 @@
+name: Dispatch Downstream Pages Rebuilds
+
+on:
+  workflow_run:
+    workflows: ["Build and Publish Docker Image"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dispatch-downstream
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    name: Trigger Pages rebuilds
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Dispatch to docs-sites repos
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          CONFIG_REPO="f5xc-salesdemos/docs-control"
+          CONFIG_PATH=".github/config/docs-sites.json"
+
+          echo "Fetching docs-sites.json from ${CONFIG_REPO}..."
+          SITES=$(gh api "repos/${CONFIG_REPO}/contents/${CONFIG_PATH}" --jq '.content' | base64 -d)
+
+          echo "$SITES" | jq -r '.[].url' | while read -r url; do
+            repo=$(echo "$url" | sed 's|https://\([^.]*\)\.github\.io/\([^/]*\)/.*|\1/\2|')
+            echo "Dispatching github-pages-deploy.yml to ${repo}..."
+            if gh workflow run github-pages-deploy.yml --repo "$repo"; then
+              echo "  [OK] ${repo}"
+            else
+              echo "  [FAIL] ${repo} (workflow may not exist yet)"
+            fi
+          done
