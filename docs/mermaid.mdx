@@ -83,7 +83,7 @@ For each `.mermaid-container` element:
 
 ## Placeholder Substitution in Diagrams
 
-Before rendering, the diagram source passes through the same `substituteText()` function used by the DOM walker (see [Placeholder System](../02-placeholder-system/) for the walker mechanism):
+Before rendering, the diagram source passes through the same `substituteText()` function used by the DOM walker (see [Placeholder System](../placeholder-system/) for the walker mechanism):
 
 ```ts
 const template = container.getAttribute('data-mermaid-src') || '';

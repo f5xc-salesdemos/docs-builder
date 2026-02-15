@@ -60,7 +60,7 @@ cp /app/node_modules/f5xc-docs-theme/astro.config.mjs /app/astro.config.mjs
 cp /app/node_modules/f5xc-docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
-Copies `astro.config.mjs` and `content.config.ts` from the theme package. The theme is the single source of truth for Astro configuration — see [Architecture](../01-architecture/) for the theme system design.
+Copies `astro.config.mjs` and `content.config.ts` from the theme package. The theme is the single source of truth for Astro configuration — see [Architecture](../architecture/) for the theme system design.
 
 ### Step 3: Inject Content
 
@@ -143,7 +143,7 @@ docker run --rm \
 
 This mounts the local `docs/` directory as content and writes the built site to `output/`.
 
-For content authors who want a live dev server workflow, see [Local Preview for Content Authors](../06-content-authors/).
+For content authors who want a live dev server workflow, see [Local Preview for Content Authors](../content-authors/).
 
 ## Developer: Local Dev Server
 
@@ -183,4 +183,4 @@ Two tags are pushed on every build:
 | `latest` | Most recent build from `main` |
 | `<sha>` | Full Git commit SHA for reproducible builds |
 
-See [CI/CD and Governance](../05-ci-cd/) for the workflow that builds and publishes the image.
+See [CI/CD and Governance](../ci-cd/) for the workflow that builds and publishes the image.

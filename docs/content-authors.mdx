@@ -1,6 +1,8 @@
 ---
 title: Local Preview for Content Authors
 description: How to preview documentation locally using the published Docker image before pushing changes.
+sidebar:
+  order: 7
 ---
 
 Content repos contain only Markdown/MDX files — no framework code, no Astro config, no `node_modules`. To preview your docs locally, you run the published Docker image against your content directory.
@@ -120,7 +122,7 @@ Reference these assets in your MDX with a root-relative path:
 
 ## Environment Variables
 
-The Docker image supports several environment variables for customizing the build. See the [Environment Variables table in Docker Build](../04-docker/#environment-variables) for the core list.
+The Docker image supports several environment variables for customizing the build. See the [Environment Variables table in Docker Build](../docker/#environment-variables) for the core list.
 
 For local preview, the most useful overrides are:
 
@@ -172,5 +174,5 @@ docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
 
 ## Further Reading
 
-- [Docker Build](../04-docker/) — Image layers, entrypoint details, and environment variables
-- [Architecture](../01-architecture/) — Content injection model and theme system design
+- [Docker Build](../docker/) — Image layers, entrypoint details, and environment variables
+- [Architecture](../architecture/) — Content injection model and theme system design
