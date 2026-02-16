@@ -44,6 +44,23 @@ if [ -z "$DOCS_SITE" ] && [ -n "$GITHUB_REPOSITORY_OWNER" ]; then
   export DOCS_SITE
 fi
 
+# Auto-detect static asset directories (no .md/.mdx files) and symlink to public
+for dir in "$CONTENT_DIR"/*/; do
+  [ -d "$dir" ] || continue
+  dirname=$(basename "$dir")
+  # Skip if directory contains any .md or .mdx files
+  if ! find "$dir" -maxdepth 1 -name '*.md' -o -name '*.mdx' | grep -q .; then
+    ln -sfn "$dir" "/app/public/$dirname"
+    echo "Static asset directory detected: $dirname"
+  fi
+done
+
+# Dev mode: run live dev server instead of building
+if [ "$MODE" = "dev" ]; then
+  echo "Starting dev server..."
+  exec npx astro dev --host
+fi
+
 # Build
 npm run build
 
