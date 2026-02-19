@@ -26,7 +26,7 @@ Changes made:
 
 **Status:** Complete
 
-Migrated `robinmordasiewicz/f5xc-docs-theme` to
+Migrated `robinmordasiewicz/@f5xc-salesdemos/docs-theme` to
 `f5xc-salesdemos/docs-theme`.
 
 Changes made:
@@ -39,7 +39,7 @@ Changes made:
 - Updated `dispatch-downstream.yml` target to `f5xc-salesdemos/docs-builder`
 - Deleted `auto-merge.yml` (consistent with docs-builder)
 - Updated `docs/01-architecture.mdx` npm alias in this repo
-- npm package name stays as `f5xc-docs-theme` (unscoped)
+- npm package name stays as `@f5xc-salesdemos/docs-theme` (unscoped)
 
 ### Phase 3: docs-control
 

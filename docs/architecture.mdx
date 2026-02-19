@@ -36,13 +36,13 @@ This means the builder repo itself ships with an empty `src/content/docs/` direc
 The Starlight theme is published as a separate npm package. `package.json` uses an npm alias to map a short name to the scoped registry package:
 
 ```json
-"f5xc-docs-theme": "^1.29.0"
+"@f5xc-salesdemos/docs-theme": "^1.29.0"
 ```
 
 The theme package owns `astro.config.mjs`. At build time the entrypoint copies it into the project root:
 
 ```sh
-cp /app/node_modules/f5xc-docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
 This keeps configuration centralized — content repos and the builder itself do not maintain their own Astro config.
@@ -89,7 +89,7 @@ The following diagram shows the end-to-end build pipeline when the Docker contai
 flowchart LR
     A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
     B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
-    D[npm registry] -->|npm install| E[node_modules/<br/>f5xc-docs-theme]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
     E -->|cp astro.config| F[astro.config.mjs]
     C --> G[astro build]
     F --> G

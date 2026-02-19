@@ -56,8 +56,8 @@ Ensures the theme package and all dependencies are at their latest compatible ve
 ### Step 2: Copy Theme Config
 
 ```sh
-cp /app/node_modules/f5xc-docs-theme/astro.config.mjs /app/astro.config.mjs
-cp /app/node_modules/f5xc-docs-theme/src/content.config.ts /app/src/content.config.ts
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
 Copies `astro.config.mjs` and `content.config.ts` from the theme package. The theme is the single source of truth for Astro configuration — see [Architecture](../architecture/) for the theme system design.
@@ -151,8 +151,8 @@ When working on the builder itself (components, plugins, theme integration), you
 
 ```sh
 npm ci
-cp node_modules/f5xc-docs-theme/astro.config.mjs astro.config.mjs
-cp node_modules/f5xc-docs-theme/src/content.config.ts src/content.config.ts
+cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
 # Copy some test content into the content collection
 cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host

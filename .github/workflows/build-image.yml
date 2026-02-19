@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: 'lts/*'
       - name: Resolve latest docs-theme
-        run: npm install f5xc-docs-theme@latest --legacy-peer-deps
+        run: npm install @f5xc-salesdemos/docs-theme@latest --legacy-peer-deps
       - name: Lowercase image name
         run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - uses: docker/setup-qemu-action@v3

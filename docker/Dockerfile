@@ -25,8 +25,8 @@ RUN npm ci --legacy-peer-deps
 COPY . .
 
 # Bake theme config into the image (single source of truth)
-RUN cp node_modules/f5xc-docs-theme/astro.config.mjs /app/astro.config.mjs && \
-    cp node_modules/f5xc-docs-theme/src/content.config.ts /app/src/content.config.ts
+RUN cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs && \
+    cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
 
 # Remove placeholder content
 RUN rm -rf src/content/docs/*
