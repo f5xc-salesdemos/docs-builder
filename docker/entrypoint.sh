@@ -129,5 +129,11 @@ fi
 
 # Copy output
 if [ -d "$OUTPUT_DIR" ]; then
+  if [ ! -w "$OUTPUT_DIR" ]; then
+    echo "ERROR: Output directory $OUTPUT_DIR is not writable by UID $(id -u)."
+    echo "If running in CI, ensure the workflow sets proper permissions on the mounted volume."
+    echo "Example: chmod 777 \$RUNNER_TEMP/docs-output  (before docker run)"
+    exit 1
+  fi
   cp -r /app/dist/* "$OUTPUT_DIR"/
 fi
