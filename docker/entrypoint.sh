@@ -52,6 +52,9 @@ if [ -z "$DOCS_SITE" ] && [ -n "$GITHUB_REPOSITORY_OWNER" ]; then
   export DOCS_SITE
 fi
 
+# Ensure public directory exists for static asset symlinks
+mkdir -p /app/public
+
 # Auto-detect static asset directories (no .md/.mdx files) and symlink to public
 for dir in "$CONTENT_DIR"/*/; do
   [ -d "$dir" ] || continue
