@@ -1,16 +1,16 @@
 ---
-import ScalarApiViewer from './ScalarApiViewer.tsx';
+import ScalarApiViewer from "./ScalarApiViewer.tsx";
 
 interface Props {
-  specUrl: string;
-  title?: string;
+	specUrl: string;
+	title?: string;
 }
 
 const { specUrl, title } = Astro.props;
 
 // Prepend Astro base path so runtime fetch() resolves correctly on project sites
-const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const resolvedUrl = specUrl.startsWith('/') ? `${base}${specUrl}` : specUrl;
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const resolvedUrl = specUrl.startsWith("/") ? `${base}${specUrl}` : specUrl;
 ---
 
 <div class="scalar-viewer-container">

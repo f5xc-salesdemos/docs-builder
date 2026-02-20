@@ -84,7 +84,10 @@ jobs:
           SITES=$(gh api "repos/${CONFIG_REPO}/contents/${CONFIG_PATH}" --jq '.content' | base64 -d)
 
           echo "$SITES" | jq -r '.[].url' | while read -r url; do
-            repo=$(echo "$url" | sed 's|https://\([^.]*\)\.github\.io/\([^/]*\)/.*|\1/\2|')
+            temp="${url#https://}"
+            org="${temp%%.*}"
+            path="${temp#*/}"
+            repo="${org}/${path%%/*}"
             echo "Dispatching github-pages-deploy.yml to ${repo}..."
             if gh workflow run github-pages-deploy.yml --repo "$repo"; then
               echo "  [OK] ${repo}"

@@ -67,10 +67,10 @@ Changes made:
 
 These references are intentional and correct:
 
-| File | Reference | Reason |
-|------|-----------|--------|
+| File                     | Reference                    | Reason                       |
+| ------------------------ | ---------------------------- | ---------------------------- |
 | `.github/dependabot.yml` | `robinmordasiewicz` assignee | User is still the maintainer |
-| `CONTRIBUTING.md` | `@robinmordasiewicz` CODEOWNER | User is still the maintainer |
+| `CONTRIBUTING.md`        | `@robinmordasiewicz` CODEOWNER | User is still the maintainer |
 
 ## Verification
 

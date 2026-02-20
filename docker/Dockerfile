@@ -1,4 +1,6 @@
 FROM node:24-alpine AS builder
+# checkov:skip=CKV_DOCKER_2:Build container runs to completion and exits
+# checkov:skip=CKV_DOCKER_7:Major version pin receives Alpine security patches
 LABEL org.opencontainers.image.description="docs-builder"
 WORKDIR /app
 
@@ -32,6 +34,9 @@ RUN cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.conf
 RUN rm -rf src/content/docs/*
 
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    chown -R node:node /app /entrypoint.sh
+
+USER node
 
 ENTRYPOINT ["/entrypoint.sh"]
