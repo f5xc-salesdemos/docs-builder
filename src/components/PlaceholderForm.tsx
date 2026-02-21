@@ -1,19 +1,19 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from 'react';
 import {
-  FIELD_GROUPS,
-  placeholderDefs,
-  loadValues,
-  saveValues,
   clearValues,
-  getDefaults,
   emitChange,
-} from "../lib/placeholder-store";
+  FIELD_GROUPS,
+  getDefaults,
+  loadValues,
+  placeholderDefs,
+  saveValues,
+} from '../lib/placeholder-store';
 
 export default function PlaceholderForm() {
   const [values, setValues] = useState<Record<string, string>>(() => loadValues());
 
   useEffect(() => {
-    emitChange(values);
+    emitChange(loadValues());
   }, []);
 
   const handleChange = useCallback((key: string, value: string) => {
@@ -46,10 +46,14 @@ export default function PlaceholderForm() {
                 const def = placeholderDefs[key];
                 if (!def) return null;
                 return (
-                  <label key={key}>
+                  <label key={key} htmlFor={`ph-${key}`}>
                     <span className="ph-label">{def.description}</span>
-                    {def.type === "dropdown" && def.options ? (
-                      <select value={values[key] ?? def.default} onChange={(e) => handleChange(key, e.target.value)}>
+                    {def.type === 'dropdown' && def.options ? (
+                      <select
+                        id={`ph-${key}`}
+                        value={values[key] ?? def.default}
+                        onChange={(e) => handleChange(key, e.target.value)}
+                      >
                         {def.options.map((opt) => (
                           <option key={opt} value={opt}>
                             {opt}
@@ -58,6 +62,7 @@ export default function PlaceholderForm() {
                       </select>
                     ) : (
                       <input
+                        id={`ph-${key}`}
                         type="text"
                         value={values[key] ?? def.default}
                         onChange={(e) => handleChange(key, e.target.value)}
