@@ -4,7 +4,7 @@
 [![Repository Settings](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/enforce-repo-settings.yml/badge.svg)](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/enforce-repo-settings.yml)
 [![License](https://img.shields.io/github/license/f5xc-salesdemos/docs-builder)](LICENSE)
 
-Containerized Astro + Starlight documentation build tool
+Containerized Astro + Starlight documentation build system
 
 ## Documentation
 
