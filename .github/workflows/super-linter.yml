@@ -18,5 +18,5 @@ concurrency:
 
 jobs:
   lint:
-    uses: ./.github/workflows/super-linter-impl.yml
+    uses: f5xc-salesdemos/docs-control/.github/workflows/super-linter.yml@main
     secrets: inherit
