@@ -9,7 +9,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/react": "^4.4.2",
+    "@astrojs/react": "^5.0.0",
     "@astrojs/starlight": "^0.38.1",
     "@hashicorp/flight-icons": "^4.2.1",
     "@iconify-json/carbon": "^1.2.19",
@@ -33,7 +33,7 @@
     "@scalar/api-reference-react": "^0.9.9",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "astro": "^5.18.0",
+    "astro": "^6.0.0",
     "@f5xc-salesdemos/docs-theme": "^2.9.0",
     "@lucide/astro": "^0.577.0",
     "puppeteer": "^24.39.1",
