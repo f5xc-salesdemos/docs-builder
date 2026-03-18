@@ -45,5 +45,8 @@
     "starlight-to-pdf": "^1.4.0",
     "unist-util-visit": "^5.1.0",
     "unocss": "^66.6.7"
+  },
+  "overrides": {
+    "dompurify": "^3.3.2"
   }
 }
