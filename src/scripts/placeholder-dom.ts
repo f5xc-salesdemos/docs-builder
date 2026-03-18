@@ -56,6 +56,16 @@ function updateSpans(values: Record<string, string>) {
   });
 }
 
+function updateCopyButtons(values: Record<string, string>) {
+  document.querySelectorAll<HTMLButtonElement>('button[data-code]').forEach((btn) => {
+    if (!btn.hasAttribute('data-code-template')) {
+      btn.setAttribute('data-code-template', btn.getAttribute('data-code') || '');
+    }
+    const template = btn.getAttribute('data-code-template') || '';
+    btn.setAttribute('data-code', substituteText(template, values));
+  });
+}
+
 async function renderMermaidDiagrams(values: Record<string, string>) {
   const containers = document.querySelectorAll<HTMLElement>('.mermaid-container');
   if (containers.length === 0) return;
@@ -98,6 +108,7 @@ async function renderMermaidDiagrams(values: Record<string, string>) {
 function handleChange(e: Event) {
   const values = (e as CustomEvent).detail as Record<string, string>;
   updateSpans(values);
+  updateCopyButtons(values);
   renderMermaidDiagrams(values);
 }
 
@@ -105,6 +116,7 @@ function init() {
   const values = getAllValues(loadValues());
   const content = document.querySelector('.sl-markdown-content') || document.body;
   walkTextNodes(content, values);
+  updateCopyButtons(values);
   renderMermaidDiagrams(values);
 }
 
