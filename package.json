@@ -31,7 +31,7 @@
     "@iconify-json/ph": "^1.2.2",
     "@iconify-json/simple-icons": "^1",
     "@iconify-json/tabler": "^1.2.31",
-    "@lucide/astro": "^0.577.0",
+    "@lucide/astro": "^1.0.0",
     "@scalar/api-reference-react": "^0.9.10",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
