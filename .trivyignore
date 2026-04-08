@@ -45,3 +45,9 @@ CVE-2026-39364
 # Expiry: 2026-06-30 — re-evaluate when upstream updates vite
 # Ref: https://nvd.nist.gov/vuln/detail/CVE-2026-39365
 CVE-2026-39365
+
+# DS-0026 — Low severity Dockerfile misconfiguration: missing HEALTHCHECK
+# Build containers are ephemeral and not long-running services
+# HEALTHCHECK is unnecessary for CI/build images
+# Ref: https://avd.aquasec.com/misconfig/ds-0026
+DS-0026
