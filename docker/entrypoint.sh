@@ -96,6 +96,20 @@ if [ -z "$LLMS_FEDERATED_SITES" ] && [ -f /app/src/content/docs/llms-federated-s
   fi
 fi
 
+# Read optional LLMs federated site categories from llms-federated-site-categories.json
+if [ -z "$LLMS_FEDERATED_SITE_CATEGORIES" ] && [ -f /app/src/content/docs/llms-federated-site-categories.json ]; then
+  LLMS_FEDERATED_SITE_CATEGORIES=$(cat /app/src/content/docs/llms-federated-site-categories.json)
+
+  if ! echo "$LLMS_FEDERATED_SITE_CATEGORIES" | python3 -m json.tool >/dev/null 2>&1; then
+    echo "WARNING: llms-federated-site-categories.json is invalid JSON — ignoring, using defaults"
+    unset LLMS_FEDERATED_SITE_CATEGORIES
+  else
+    export LLMS_FEDERATED_SITE_CATEGORIES
+    rm /app/src/content/docs/llms-federated-site-categories.json
+    echo "LLMs federated site categories loaded"
+  fi
+fi
+
 # Extract base path from repo name (if not set via env)
 if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
   DOCS_BASE="/${GITHUB_REPOSITORY#*/}"
