@@ -2,6 +2,7 @@
 
 [![GitHub Pages Deploy](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/github-pages-deploy.yml/badge.svg)](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/github-pages-deploy.yml)
 [![Repository Settings](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/enforce-repo-settings.yml/badge.svg)](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/enforce-repo-settings.yml)
+[![Build Image](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/build-image.yml/badge.svg)](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/build-image.yml)
 [![License](https://img.shields.io/github/license/f5xc-salesdemos/docs-builder)](LICENSE)
 
 Containerized Astro + Starlight documentation build system
