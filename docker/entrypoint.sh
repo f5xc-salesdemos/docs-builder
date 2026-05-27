@@ -110,6 +110,19 @@ if [ -z "$LLMS_FEDERATED_SITE_CATEGORIES" ] && [ -f /app/src/content/docs/llms-f
   fi
 fi
 
+# Read OpenAPI specs configuration for starlight-openapi plugin
+if [ -z "$OPENAPI_SPECS_CONFIG" ] && [ -f /app/src/content/docs/openapi-specs-config.json ]; then
+  OPENAPI_SPECS_CONFIG=$(cat /app/src/content/docs/openapi-specs-config.json)
+  if ! echo "$OPENAPI_SPECS_CONFIG" | python3 -m json.tool >/dev/null 2>&1; then
+    echo "WARNING: openapi-specs-config.json is invalid JSON — ignoring"
+    unset OPENAPI_SPECS_CONFIG
+  else
+    export OPENAPI_SPECS_CONFIG
+    rm /app/src/content/docs/openapi-specs-config.json
+    echo "OpenAPI specs config loaded (starlight-openapi plugin enabled)"
+  fi
+fi
+
 # Extract base path from repo name (if not set via env)
 if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
   DOCS_BASE="/${GITHUB_REPOSITORY#*/}"
