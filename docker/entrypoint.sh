@@ -13,6 +13,15 @@ else
   exit 1
 fi
 
+# Detect locale-aware content structure
+DOCS_ROOT="/app/src/content/docs"
+if [ -d "$DOCS_ROOT/en" ]; then
+  EN_ROOT="$DOCS_ROOT/en"
+  echo "Locale-aware content detected (en/ subdirectory)"
+else
+  EN_ROOT="$DOCS_ROOT"
+fi
+
 # Normalize Terraform-style page_title to Starlight-required title
 # Terraform provider doc generators use page_title; Starlight's docsSchema requires title.
 # Note: This transform handles single-line page_title values only.
@@ -50,14 +59,14 @@ if [ -f /app/src/content/docs/placeholders.json ]; then
 fi
 
 # Extract title from index.mdx frontmatter (if not set via env)
-if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
-  DOCS_TITLE=$(grep -m1 '^title:' /app/src/content/docs/index.mdx | sed 's/title: *["]*//;s/["]*$//' || echo "Documentation")
+if [ -z "$DOCS_TITLE" ] && [ -f "$EN_ROOT/index.mdx" ]; then
+  DOCS_TITLE=$(grep -m1 '^title:' "$EN_ROOT/index.mdx" | sed 's/title: *["]*//;s/["]*$//' || echo "Documentation")
   export DOCS_TITLE
 fi
 
 # Extract description from index.mdx frontmatter (if not set via env)
-if [ -z "$DOCS_DESCRIPTION" ] && [ -f /app/src/content/docs/index.mdx ]; then
-  DOCS_DESCRIPTION=$(grep -m1 '^description:' /app/src/content/docs/index.mdx | sed 's/description: *["]*//;s/["]*$//' || echo "")
+if [ -z "$DOCS_DESCRIPTION" ] && [ -f "$EN_ROOT/index.mdx" ]; then
+  DOCS_DESCRIPTION=$(grep -m1 '^description:' "$EN_ROOT/index.mdx" | sed 's/description: *["]*//;s/["]*$//' || echo "")
   export DOCS_DESCRIPTION
 fi
 
