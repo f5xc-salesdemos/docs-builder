@@ -1,0 +1,144 @@
+---
+title: CI/CD और गवर्नेंस
+description: 'GitHub Actions वर्कफ़्लो, टेम्पलेट सिंक, सीक्रेट्स, और ब्रांच प्रोटेक्शन।'
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 3b4552f7ab42
+  translator: machine
+---
+
+रिपॉज़िटरी चार GitHub Actions वर्कफ़्लो और गवर्नेंस के लिए एक केंद्रीकृत टेम्पलेट सिस्टम का उपयोग करती है।
+
+## वर्कफ़्लो
+
+| वर्कफ़्लो | फ़ाइल | ट्रिगर | उद्देश्य |
+|----------|------|---------|---------|
+| GitHub Pages Deploy | `github-pages-deploy.yml` | `main` पर Push (`docs/**`), मैनुअल डिस्पैच | डॉक्यूमेंटेशन साइट को बिल्ड करता है और GitHub Pages पर डिप्लॉय करता है |
+| Build and Publish Docker Image | `build-image.yml` | `main` पर Push (`docker/**`, `package*.json`), दैनिक cron, `repository_dispatch` | Docker इमेज बिल्ड करता है, GHCR पर पुश करता है, और डाउनस्ट्रीम रिपॉज़ में रीबिल्ड डिस्पैच करता है |
+| Require Linked Issue | `require-linked-issue.yml` | पुल रिक्वेस्ट इवेंट | उन PR को ब्लॉक करता है जो किसी GitHub इश्यू का संदर्भ नहीं देते |
+| Enforce Repository Settings | `enforce-repo-settings.yml` | हर 6 घंटे, सेटिंग्स कॉन्फ़िग पर Push, मैनुअल डिस्पैच | टेम्पलेट से मानकीकृत रिपॉज़ सेटिंग्स लागू करता है |
+
+### GitHub Pages Deploy
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+```
+
+टेम्पलेट रिपॉज़िटरी में एक पुन: उपयोग योग्य वर्कफ़्लो को डेलीगेट करता है:
+
+```yaml
+jobs:
+  docs:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+```
+
+अनुमतियाँ: `contents: read`, `packages: read`, `pages: write`, `id-token: write`। पुराने डिप्लॉयमेंट से बचने के लिए `cancel-in-progress: true` के साथ कंकरेंसी ग्रुप `pages` का उपयोग करता है।
+
+केवल तब ट्रिगर होता है जब `docs/` के अंतर्गत फ़ाइलें बदलती हैं। `workflow_dispatch` के माध्यम से मैन्युअल रूप से भी ट्रिगर किया जा सकता है, इसी तरह `build-image.yml` में डिस्पैच जॉब डाउनस्ट्रीम रीबिल्ड ट्रिगर करता है।
+
+### Build and Publish Docker Image
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    - cron: '0 6 * * *'
+  repository_dispatch:
+    types: [rebuild-image]
+```
+
+चरण:
+1. कोड चेकआउट
+2. `docker/login-action` का उपयोग करके `ghcr.io` में लॉग इन
+3. `docker/build-push-action` का उपयोग करके कॉन्टेक्स्ट `.` और फ़ाइल `docker/Dockerfile` के साथ बिल्ड और पुश
+4. टैग: `ghcr.io/<owner>/<repo>:latest` और `ghcr.io/<owner>/<repo>:<sha>`
+
+सफल बिल्ड के बाद, **dispatch** जॉब टेम्पलेट रिपॉज़िटरी के `downstream-repos.json` कॉन्फ़िग में सूचीबद्ध प्रत्येक डाउनस्ट्रीम रिपॉज़ पर `workflow_dispatch` के माध्यम से `github-pages-deploy.yml` ट्रिगर करता है। यह सुनिश्चित करता है कि सभी कंटेंट रिपॉज़ अपडेटेड बिल्डर इमेज के साथ अपने डॉक्स को रीबिल्ड करें।
+
+दैनिक cron सुनिश्चित करता है कि कोड परिवर्तन के बिना भी इमेज अपडेट रहे (डिपेंडेंसी अपडेट उठाता है)। `repository_dispatch` इवेंट बाहरी सिस्टम को रीबिल्ड ट्रिगर करने की अनुमति देता है।
+
+केवल तब ट्रिगर होता है जब `docker/` फ़ाइलें या `package*.json` बदलते हैं। केवल डॉक्स में परिवर्तन इमेज रीबिल्ड ट्रिगर नहीं करते।
+
+### Require Linked Issue
+
+```yaml
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+```
+
+यह सुनिश्चित करने के लिए `nearform-actions/github-action-check-linked-issues@v1` का उपयोग करता है कि प्रत्येक PR एक GitHub इश्यू का संदर्भ देता है (जैसे, विवरण में `Closes #42`)। Dependabot PR को इसके माध्यम से बाहर रखा गया है:
+
+```yaml
+exclude-branches: "dependabot/**"
+```
+
+यदि चेक विफल होता है तो एक कस्टम संदेश योगदानकर्ताओं को अपेक्षित प्रारूप बताता है। पूर्ण योगदानकर्ता वर्कफ़्लो के लिए [CONTRIBUTING.md](../CONTRIBUTING.md) देखें।
+
+### Enforce Repository Settings
+
+```yaml
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/config/repo-settings.json'
+  workflow_dispatch:
+```
+
+टेम्पलेट रिपॉज़िटरी में एक पुन: उपयोग योग्य वर्कफ़्लो को डेलीगेट करता है:
+
+```yaml
+jobs:
+  enforce:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    secrets:
+      repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
+```
+
+हर 6 घंटे और सेटिंग्स कॉन्फ़िग फ़ाइल में परिवर्तन पर चलता है। `.github/config/repo-settings.json` से ब्रांच प्रोटेक्शन नियम, मर्ज सेटिंग्स, और अन्य रिपॉज़िटरी कॉन्फ़िगरेशन लागू करता है।
+
+## गवर्नेंस मॉडल
+
+### केंद्रीकृत टेम्पलेट
+
+`f5xc-salesdemos/docs-control` रिपॉज़िटरी निम्नलिखित के लिए सत्य का एकल स्रोत है:
+
+- पुन: उपयोग योग्य वर्कफ़्लो परिभाषाएँ (डॉक्स डिप्लॉय, रिपॉज़ सेटिंग्स प्रवर्तन)
+- संगठन में सभी रिपॉज़ में सिंक की गई प्रबंधित फ़ाइलें
+- मानक कॉन्फ़िगरेशन और ब्रांच प्रोटेक्शन नियम
+
+यह बिल्डर और सभी कंटेंट रिपॉज़ अपना CI/CD व्यवहार टेम्पलेट से इनहेरिट करते हैं।
+
+### प्रबंधित फ़ाइल सिंक
+
+टेम्पलेट रिपॉज़िटरी प्रबंधित फ़ाइलें (जैसे वर्कफ़्लो परिभाषाएँ और कॉन्फ़िग फ़ाइलें) डाउनस्ट्रीम रिपॉज़ में पुश कर सकती है। यह मैनुअल अपडेट के बिना सभी रिपॉज़िटरी को संरेखित रखता है। सिंक टेम्पलेट रिपॉज़ में एक अलग वर्कफ़्लो के माध्यम से चलता है।
+
+### ब्रांच प्रोटेक्शन
+
+enforce-repo-settings वर्कफ़्लो टेम्पलेट से ब्रांच प्रोटेक्शन नियम लागू करता है, जिसमें शामिल हैं:
+
+- मर्ज से पहले आवश्यक स्टेटस चेक
+- आवश्यक लिंक्ड इश्यू चेक
+- स्क्वैश मर्ज प्राथमिक
+- मर्ज के बाद हेड ब्रांच ऑटो-डिलीट
+
+## सीक्रेट्स
+
+| सीक्रेट | स्रोत | उद्देश्य |
+|--------|--------|---------|
+| `GITHUB_TOKEN` | स्वचालित (GitHub) | अधिकांश वर्कफ़्लो द्वारा चेकआउट, पैकेज पब्लिशिंग, और API कॉल के लिए उपयोग किया जाता है |
+| `REPO_ADMIN_TOKEN` | मैनुअल (रिपॉज़िटरी सीक्रेट) | enforce-repo-settings और डिस्पैच जॉब द्वारा ब्रांच प्रोटेक्शन, रिपॉज़ सेटिंग्स को संशोधित करने, और डाउनस्ट्रीम वर्कफ़्लो ट्रिगर करने के लिए आवश्यक (admin स्कोप चाहिए) |

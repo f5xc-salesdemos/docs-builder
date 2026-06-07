@@ -1,0 +1,191 @@
+---
+title: Docker Build
+description: >-
+  Dockerfile लेयर्स, एंट्रीपॉइंट ऑर्केस्ट्रेशन, एनवायरनमेंट वेरिएबल्स, और लोकल
+  उपयोग।
+sidebar:
+  order: 4
+i18n:
+  sourceHash: f8453f94aa45
+  translator: machine
+---
+
+बिल्डर एक Docker इमेज के रूप में उपलब्ध है। कंटेंट रिपॉज़िटरीज़ इसे Node.js या Astro को लोकली इंस्टॉल किए बिना स्टैटिक HTML उत्पन्न करने के लिए चलाती हैं।
+
+## Dockerfile
+
+`docker/Dockerfile` `node:24-alpine` पर मल्टी-स्टेप बिल्ड का उपयोग करता है:
+
+```dockerfile
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+# Install deps (cached layer)
+COPY package*.json ./
+RUN npm ci
+
+# Copy framework code
+COPY . .
+
+# Remove placeholder content
+RUN rm -rf src/content/docs/*
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+```
+
+### लेयर रणनीति
+
+| लेयर | क्या | अलग से कैश क्यों किया जाता है |
+|-------|------|----------------------|
+| 1 | `COPY package*.json` + `npm ci` | डिपेंडेंसीज़ कम बार बदलती हैं; इस लेयर को कैश करने से हर बिल्ड पर दोबारा डाउनलोड से बचा जा सकता है |
+| 2 | `COPY . .` | फ्रेमवर्क सोर्स कोड |
+| 3 | `rm -rf src/content/docs/*` | किसी भी प्लेसहोल्डर कंटेंट को हटाता है ताकि केवल इंजेक्ट किया गया कंटेंट दिखाई दे |
+| 4 | `COPY entrypoint.sh` | बिल्ड ऑर्केस्ट्रेशन स्क्रिप्ट |
+
+## एंट्रीपॉइंट
+
+`docker/entrypoint.sh` हर बार कंटेनर स्टार्ट होने पर चलता है। यह क्रमशः निम्नलिखित चरण निष्पादित करता है:
+
+### चरण 1: डिपेंडेंसीज़ अपडेट करें
+
+```sh
+npm install
+npm update
+```
+
+यह सुनिश्चित करता है कि थीम पैकेज और सभी डिपेंडेंसीज़ अपने नवीनतम संगत संस्करणों पर हैं।
+
+### चरण 2: थीम कॉन्फ़िग कॉपी करें
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+```
+
+थीम पैकेज से `astro.config.mjs` और `content.config.ts` कॉपी करता है। Astro कॉन्फ़िगरेशन के लिए थीम एकमात्र स्रोत है — थीम सिस्टम डिज़ाइन के लिए [आर्किटेक्चर](../architecture/) देखें।
+
+### चरण 3: कंटेंट इंजेक्ट करें
+
+```sh
+if [ -d "$CONTENT_DIR" ]; then
+  cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+else
+  echo "ERROR: No content found at $CONTENT_DIR"
+  exit 1
+fi
+```
+
+माउंट किए गए कंटेंट को Astro की कंटेंट कलेक्शन डायरेक्टरी में कॉपी करता है। कंटेंट डायरेक्टरी अनुपस्थित होने पर त्रुटि के साथ बाहर निकलता है।
+
+### चरण 4: शीर्षक निकालें
+
+```sh
+if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
+  DOCS_TITLE=$(grep -m1 '^title:' /app/src/content/docs/index.mdx | sed 's/title: *["]*//;s/["]*$//')
+  export DOCS_TITLE
+fi
+```
+
+यदि `DOCS_TITLE` एनवायरनमेंट के माध्यम से सेट नहीं है, तो इसे `index.mdx` के `title:` फ्रंटमैटर फ़ील्ड से निकालता है।
+
+### चरण 5: बेस पाथ निकालें
+
+```sh
+if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
+  DOCS_BASE="/${GITHUB_REPOSITORY#*/}"
+  export DOCS_BASE
+fi
+```
+
+GitHub रिपॉज़िटरी नाम से साइट बेस पाथ प्राप्त करता है (उदा., `owner/my-docs` से `/my-docs` बनता है)।
+
+### चरण 6: बिल्ड
+
+```sh
+npm run build
+```
+
+`astro build` चलाता है, जो `/app/dist/` में स्टैटिक आउटपुट उत्पन्न करता है।
+
+### चरण 7: आउटपुट कॉपी करें
+
+```sh
+if [ -d "$OUTPUT_DIR" ]; then
+  cp -r /app/dist/* "$OUTPUT_DIR"/
+fi
+```
+
+बिल्ट साइट को आउटपुट माउंट पॉइंट पर कॉपी करता है।
+
+## एनवायरनमेंट वेरिएबल्स
+
+| वेरिएबल | डिफ़ॉल्ट | विवरण |
+|----------|---------|-------------|
+| `CONTENT_DIR` | `/content/docs` | माउंट की गई कंटेंट डायरेक्टरी का पाथ |
+| `OUTPUT_DIR` | `/output` | वह पाथ जहाँ बिल्ट साइट कॉपी की जाती है |
+| `DOCS_TITLE` | *(index.mdx से निकाला गया)* | Astro कॉन्फ़िग को पास किया जाने वाला साइट शीर्षक |
+| `DOCS_DESCRIPTION` | *(index.mdx से निकाला गया)* | फ्रंटमैटर से साइट विवरण |
+| `DOCS_BASE` | *(`GITHUB_REPOSITORY` से प्राप्त)* | साइट के लिए बेस पाथ (उदा., `/my-docs`) |
+| `DOCS_SITE` | *(`GITHUB_REPOSITORY_OWNER` से प्राप्त)* | Astro कॉन्फ़िग को पास किया जाने वाला साइट URL (उदा., `https://<owner>.github.io`) |
+| `GITHUB_REPOSITORY` | *(GitHub Actions द्वारा सेट)* | `DOCS_BASE` प्राप्त करने के लिए उपयोग की जाने वाली `owner/repo` स्ट्रिंग |
+| `GENERATE_PDF` | `false` | बिल्ड के बाद PDF जनरेशन सक्षम करें |
+| `PDF_FILENAME` | `docs` | जनरेट की गई PDF के लिए आउटपुट फ़ाइलनाम |
+| `LLMS_OPTIONAL_LINKS` | `[]` | `llms.txt` Optional सेक्शन के लिए चाइल्ड साइट URLs की JSON ऐरे |
+
+## लोकल उपयोग
+
+Docker का उपयोग करके लोकली डॉक्यूमेंटेशन बिल्ड करने के लिए:
+
+```sh
+docker run --rm \
+  -v "$(pwd)/docs:/content/docs" \
+  -v "$(pwd)/output:/output" \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+यह लोकल `docs/` डायरेक्टरी को कंटेंट के रूप में माउंट करता है और बिल्ट साइट को `output/` में लिखता है।
+
+लाइव डेव सर्वर वर्कफ़्लो चाहने वाले कंटेंट लेखकों के लिए, [कंटेंट लेखकों के लिए लोकल प्रीव्यू](../content-authors/) देखें।
+
+## डेवलपर: लोकल डेव सर्वर
+
+बिल्डर पर काम करते समय (कंपोनेंट्स, प्लगइन्स, थीम इंटीग्रेशन), आप Docker के बिना सीधे Astro का डेव सर्वर चला सकते हैं:
+
+```sh
+npm ci
+cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+# Copy some test content into the content collection
+cp -r /path/to/test-content/* src/content/docs/
+DOCS_TITLE="Dev Test" npx astro dev --host
+```
+
+`http://localhost:4321` खोलें। कंपोनेंट और प्लगइन परिवर्तनों के लिए हॉट मॉड्यूल रिप्लेसमेंट (HMR) काम करता है।
+
+:::note
+`astro.config.mjs` और `content.config.ts` थीम पैकेज से आते हैं और इस रिपो में वर्शन-कंट्रोल्ड नहीं हैं। डेव सर्वर चलाने से पहले आपको इन्हें `node_modules` से कॉपी करना होगा। Docker बिल्ड में एंट्रीपॉइंट यह स्वचालित रूप से संभालता है।
+:::
+
+:::note
+`src/content/docs/` इमेज बिल्ड समय पर खाली की जाती है और gitignore की गई है। टेस्ट कंटेंट वहाँ मैन्युअली रखें — यह कमिट नहीं होगा।
+:::
+
+## इमेज रजिस्ट्री
+
+इमेज GitHub Container Registry पर प्रकाशित की जाती है:
+
+```
+ghcr.io/f5xc-salesdemos/docs-builder
+```
+
+प्रत्येक बिल्ड पर दो टैग पुश किए जाते हैं:
+
+| टैग | विवरण |
+|-----|-------------|
+| `latest` | `main` से सबसे हालिया बिल्ड |
+| `<sha>` | प्रतिलिपि योग्य बिल्ड के लिए पूर्ण Git कमिट SHA |
+
+इमेज को बिल्ड और प्रकाशित करने वाले वर्कफ़्लो के लिए [CI/CD और गवर्नेंस](../ci-cd/) देखें।

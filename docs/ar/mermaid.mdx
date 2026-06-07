@@ -1,0 +1,132 @@
+---
+title: مخططات Mermaid
+description: >-
+  إضافة remark، العرض من جانب العميل عبر CDN، استبدال العناصر النائبة في
+  المخططات، ومعالجة الأخطاء.
+sidebar:
+  order: 3
+i18n:
+  sourceHash: dbc6741c0e37
+  translator: machine
+---
+
+يدعم المُنشئ مخططات [Mermaid](https://mermaid.js.org/) من خلال معالجة على مرحلتين: إضافة remark في وقت البناء تُجهّز الترميز، ومُعالج من جانب العميل يُنتج ملف SVG.
+
+## إضافة Remark
+
+تعمل إضافة remark-mermaid (المُقدَّمة من حزمة npm الخاصة بـ `docs-theme`) أثناء بناء Astro. تستخدم `unist-util-visit` للعثور على كتل الشيفرة المسيّجة التي تحتوي على `lang === 'mermaid'` وتستبدلها بـ HTML:
+
+```js
+visit(tree, 'code', (node, index, parent) => {
+  if (node.lang !== 'mermaid' || index === undefined || !parent) return;
+
+  const escaped = node.value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+  parent.children[index] = {
+    type: 'html',
+    value: `<div class="mermaid-container" data-mermaid-src="${escaped}">
+              <pre class="mermaid">${node.value}</pre>
+            </div>`,
+  };
+});
+```
+
+التفاصيل الرئيسية:
+
+| الجانب | القيمة |
+|--------|-------|
+| نوع العقدة المُطابَقة | عقد `code` حيث `lang === 'mermaid'` |
+| تهريب كيانات HTML | `&`، `<`، `>`، `"` — يمنع حقن السمات في `data-mermaid-src` |
+| هيكل المخرجات | `<div class="mermaid-container">` مع سمة `data-mermaid-src` التي تحتوي على المصدر المُهرَّب |
+| المحتوى الاحتياطي | `<pre class="mermaid">` مع المصدر الخام (يظهر حتى يقوم JavaScript بالعرض) |
+
+## العرض من جانب العميل
+
+تتولى دالة `renderMermaidDiagrams()` في `src/scripts/placeholder-dom.ts` إنشاء SVG في المتصفح.
+
+### استيراد Mermaid
+
+يتم تحميل Mermaid عند الطلب من CDN — وليس مُضمَّنًا في الحزمة:
+
+```ts
+const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default;
+```
+
+### التهيئة
+
+```ts
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  securityLevel: 'loose',
+  themeVariables: {
+    primaryColor: '#ffffff',
+    primaryBorderColor: '#cccccc',
+    background: '#ffffff',
+    mainBkg: '#ffffff',
+    secondBkg: '#ffffff',
+    tertiaryColor: '#ffffff',
+  },
+});
+```
+
+`startOnLoad: false` يمنع Mermaid من المسح التلقائي للصفحة. `securityLevel: 'loose'` يسمح بأحداث النقر والروابط في المخططات.
+
+### حلقة العرض
+
+لكل عنصر `.mermaid-container`:
+
+1. قراءة مصدر المخطط الخام من `data-mermaid-src`
+2. تنفيذ استبدال العناصر النائبة على المصدر (انظر أدناه)
+3. مسح الحاوية وإزالة أي سمة `data-processed`
+4. استدعاء `mermaid.render()` بمعرّف عشوائي لإنتاج SVG
+5. تعيين `backgroundColor: 'white'` على عنصر `<svg>` المُعالَج
+
+## استبدال العناصر النائبة في المخططات
+
+قبل العرض، يمر مصدر المخطط عبر نفس دالة `substituteText()` المُستخدَمة من قبل متتبع DOM (انظر [نظام العناصر النائبة](../placeholder-system/) لآلية المتتبع):
+
+```ts
+const template = container.getAttribute('data-mermaid-src') || '';
+const substituted = substituteText(template, values);
+```
+
+هذا يعني أن رموز العناصر النائبة مثل `xCUSTOMER_ASNx` تعمل داخل تعريفات مخططات Mermaid. عندما يغيّر المستخدم قيمة في النموذج، يُطلق حدث `placeholder-change` إعادة عرض كاملة لجميع المخططات بالقيم المُحدَّثة.
+
+## معالجة الأخطاء
+
+إذا أطلق `mermaid.render()` خطأ (على سبيل المثال، بسبب خطأ في بناء الجملة في مصدر المخطط)، يعرض كتلة catch الخطأ مباشرة في الحاوية:
+
+```ts
+} catch (e) {
+  container.textContent = `Diagram error: ${e}`;
+}
+```
+
+هذا يجعل أخطاء التأليف مرئية دون تعطيل بقية الصفحة.
+
+## إعادة العرض
+
+تُعاد عرض المخططات في حالتين:
+
+| المُحفِّز | الحدث | ما يحدث |
+|---------|-------|-------------|
+| تغيير قيم العناصر النائبة | `placeholder-change` | تستدعي `handleChange()` دالة `renderMermaidDiagrams()` بالقيم الجديدة |
+| التنقل في صفحات Astro | `astro:page-load` | تستدعي `init()` دالة `renderMermaidDiagrams()` للصفحة الجديدة |
+
+## صياغة التأليف
+
+اكتب كتلة شيفرة مسيّجة قياسية مع وسم اللغة `mermaid`:
+
+````markdown
+```mermaid
+flowchart LR
+    A[Customer ASN: xCUSTOMER_ASNx] --> B[F5 XC ASN: xF5_XC_ASNx]
+```
+````
+
+تحوّل إضافة remark هذا إلى عنصر div حاوٍ في وقت البناء. يعرضه العميل كـ SVG مع استبدال قيم العناصر النائبة.

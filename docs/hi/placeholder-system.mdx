@@ -1,0 +1,214 @@
+---
+title: प्लेसहोल्डर सिस्टम
+description: >-
+  टोकन प्रारूप, स्थिति प्रबंधन, DOM वॉकर, गणना किए गए मान, और नए प्लेसहोल्डर
+  कैसे जोड़ें।
+sidebar:
+  order: 2
+i18n:
+  sourceHash: a92367b93514
+  translator: machine
+---
+
+प्लेसहोल्डर सिस्टम पाठकों को पूरे दस्तावेज़ीकरण में IP पते, ASN, और अन्य डिप्लॉयमेंट-विशिष्ट मानों को अनुकूलित करने की सुविधा देता है। लेखक अपने Markdown में टोकन लिखते हैं; ब्राउज़र उन्हें रनटाइम पर उपयोगकर्ता द्वारा प्रदान किए गए मानों से बदल देता है।
+
+## टोकन प्रारूप
+
+टोकन निम्नलिखित regex पैटर्न का पालन करते हैं:
+
+```
+x([A-Z][A-Z0-9_]+)x
+```
+
+टोकन लोअरकेस `x` से शुरू और समाप्त होता है और इसमें अपरकेस पहचानकर्ता होता है। उदाहरण के लिए, `xCUSTOMER_ASNx` `CUSTOMER_ASN` प्लेसहोल्डर को संदर्भित करता है।
+
+regex `src/scripts/placeholder-dom.ts` में परिभाषित है:
+
+```ts
+const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
+```
+
+## प्लेसहोल्डर परिभाषाएँ
+
+सभी प्लेसहोल्डर `src/data/placeholders.json` में घोषित किए गए हैं। प्रत्येक प्रविष्टि की संरचना इस प्रकार है:
+
+```json
+{
+  "CUSTOMER_ASN": {
+    "type": "text",
+    "default": "64496",
+    "description": "Your public ASN (registered with ARIN/RIR)"
+  }
+}
+```
+
+| फ़ील्ड | आवश्यक | विवरण |
+|-------|----------|-------------|
+| `type` | हाँ | फ्री-फॉर्म इनपुट के लिए `"text"`, सेलेक्ट मेन्यू के लिए `"dropdown"` |
+| `default` | हाँ | पाठक द्वारा कुछ भी बदलने से पहले दिखाया जाने वाला प्रारंभिक मान |
+| `description` | हाँ | फॉर्म में प्रदर्शित लेबल |
+| `options` | केवल dropdown के लिए | अनुमत मानों की सरणी |
+
+## स्थिति प्रबंधन
+
+`src/lib/placeholder-store.ts` सभी प्लेसहोल्डर स्थिति को संभालता है।
+
+### संग्रहण
+
+मान `localStorage` में `f5xc-placeholders` कुंजी के अंतर्गत स्थायी रूप से संग्रहीत होते हैं। स्टोर चार फ़ंक्शन प्रदान करता है:
+
+| फ़ंक्शन | उद्देश्य |
+|----------|---------|
+| `getDefaults()` | JSON से प्रत्येक प्लेसहोल्डर कुंजी को उसके `default` मान का मैप लौटाता है |
+| `loadValues()` | localStorage से पढ़ता है, `getDefaults()` पर फॉलबैक करता है |
+| `saveValues(values)` | वर्तमान मैप को localStorage में लिखता है |
+| `clearValues()` | localStorage प्रविष्टि को हटाता है |
+
+### फ़ील्ड समूह
+
+`FIELD_GROUPS` फॉर्म UI के लिए प्लेसहोल्डर कुंजियों को लेबल किए गए अनुभागों में व्यवस्थित करता है:
+
+```ts
+export const FIELD_GROUPS: FieldGroup[] = [
+  { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
+  { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
+  { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
+  // ... more groups
+];
+```
+
+### गणना किए गए मान
+
+कुछ मान सीधे दर्ज करने के बजाय उपयोगकर्ता इनपुट से प्राप्त किए जाते हैं। `getComputedValues()` लुकअप तालिकाओं से इनकी गणना करता है:
+
+```ts
+const cidrToMask: Record<string, string> = {
+  '/24 (256 IPs)': '255.255.255.0',
+  '/23 (512 IPs)': '255.255.254.0',
+  // ...
+};
+```
+
+दो गणना किए गए प्लेसहोल्डर उत्पन्न होते हैं:
+
+| गणना कुंजी | किससे प्राप्त | उदाहरण |
+|-------------|-------------|---------|
+| `PROTECTED_MASK_V4` | `cidrToMask` लुकअप के माध्यम से `PROTECTED_CIDR_V4` | `255.255.255.0` |
+| `PROTECTED_PREFIX_V4` | `cidrToShort` के माध्यम से `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` | `192.0.2.0/24` |
+
+`getAllValues()` उपयोगकर्ता द्वारा दर्ज किए गए मानों को गणना किए गए मानों के साथ मर्ज करता है, जिससे प्रतिस्थापन के लिए एक पूर्ण मैप मिलता है।
+
+### इवेंट उत्सर्जन
+
+`emitChange()` `document` पर `detail` के रूप में पूर्ण मान मैप के साथ एक `placeholder-change` CustomEvent डिस्पैच करता है:
+
+```ts
+export function emitChange(values: Record<string, string>) {
+  document.dispatchEvent(
+    new CustomEvent('placeholder-change', { detail: getAllValues(values) }),
+  );
+}
+```
+
+यह इवेंट DOM span अपडेट और Mermaid री-रेंडरिंग दोनों को संचालित करता है।
+
+## React फॉर्म कंपोनेंट
+
+`src/components/PlaceholderForm.tsx` संपादन UI प्रदान करता है।
+
+- **State**: `loadValues()` से आरंभीकृत `useState`
+- **माउंट पर**: `useEffect` प्रारंभिक DOM प्रतिस्थापन को ट्रिगर करने के लिए `emitChange()` कॉल करता है
+- **handleChange**: React state अपडेट करता है, `saveValues()` और `emitChange()` कॉल करता है
+- **handleReset**: `clearValues()` कॉल करता है, state को `getDefaults()` पर रीसेट करता है, change उत्सर्जित करता है
+- **रेंडरिंग**: `FIELD_GROUPS` पर इटरेट करता है, प्रति समूह एक `<fieldset>` रेंडर करता है। प्रत्येक कुंजी को या तो `<input>` (text प्रकार) या `<select>` (dropdown प्रकार) मिलता है
+- **लेआउट**: फॉर्म एक `<details>` एलिमेंट में लपेटा गया है, डिफ़ॉल्ट रूप से संक्षिप्त
+
+## Astro रैपर
+
+`src/components/PlaceholderFormWrapper.astro` React कंपोनेंट को Astro पृष्ठ से जोड़ता है:
+
+```astro
+<PlaceholderForm client:only="react" />
+
+<script>
+  import '../scripts/placeholder-dom.ts';
+</script>
+```
+
+`client:only="react"` Astro को बताता है कि कंपोनेंट को पूरी तरह क्लाइंट पर हाइड्रेट करना है (कोई SSR नहीं)। `<script>` टैग DOM वॉकर को इम्पोर्ट करता है ताकि यह हर उस पृष्ठ पर चले जिसमें यह रैपर शामिल है।
+
+रैपर फॉर्म स्टाइलिंग (`.ph-form-wrapper`, `.ph-grid`, `.ph-value`, आदि) के लिए ग्लोबल CSS भी इंजेक्ट करता है।
+
+## DOM वॉकर
+
+`src/scripts/placeholder-dom.ts` क्लाइंट-साइड टोकन प्रतिस्थापन को संभालता है।
+
+### प्रारंभिक वॉक
+
+पृष्ठ लोड पर, `init()` चलता है:
+
+1. `.sl-markdown-content` को रूट के रूप में चुनता है (`document.body` पर फॉलबैक)
+2. `walkTextNodes(root, values)` कॉल करता है जो `NodeFilter.SHOW_TEXT` के साथ `document.createTreeWalker` का उपयोग करता है
+3. टोकन regex से मिलान करने वाले प्रत्येक टेक्स्ट नोड के लिए, इसे सादे टेक्स्ट नोड्स और `<span data-ph="KEY" class="ph-value">` एलिमेंट्स के डॉक्यूमेंट फ्रैगमेंट में विभाजित करता है
+4. मूल टेक्स्ट नोड को फ्रैगमेंट से बदल देता है
+
+वॉक के बाद, DOM में रॉ टोकन के बजाय `data-ph` एट्रिब्यूट वाले span होते हैं।
+
+### बाद के अपडेट
+
+जब फॉर्म `placeholder-change` इवेंट उत्सर्जित करता है, तो `updateSpans()` चलता है:
+
+```ts
+document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
+  const name = span.getAttribute('data-ph')!;
+  if (values[name] !== undefined) {
+    span.textContent = values[name];
+  }
+});
+```
+
+यह ट्री को फिर से वॉक करने से बचाता है — यह सीधे span टेक्स्ट कंटेंट को अपडेट करता है।
+
+### इवेंट लिसनर
+
+स्क्रिप्ट दो लिसनर पंजीकृत करती है:
+
+| इवेंट | हैंडलर | उद्देश्य |
+|-------|---------|---------|
+| `placeholder-change` | `handleChange` | span अपडेट करता है और Mermaid आरेखों को फिर से रेंडर करता है |
+| `astro:page-load` | `init` | Astro क्लाइंट-साइड नेविगेशन के बाद DOM को फिर से वॉक करता है |
+
+## कैसे करें: नया प्लेसहोल्डर जोड़ें
+
+1. **JSON प्रविष्टि जोड़ें** `src/data/placeholders.json` में:
+   ```json
+   "MY_NEW_VALUE": {
+     "type": "text",
+     "default": "example",
+     "description": "Description shown in the form"
+   }
+   ```
+
+2. **कुंजी को फ़ील्ड समूह में जोड़ें** `src/lib/placeholder-store.ts` में। या तो इसे किसी मौजूदा समूह की `keys` सरणी में जोड़ें या `FIELD_GROUPS` में एक नया समूह बनाएँ।
+
+3. **कंटेंट में टोकन का उपयोग करें**: किसी भी `.mdx` फ़ाइल में `xMY_NEW_VALUEx` लिखें। DOM वॉकर इसे रनटाइम पर बदल देगा।
+
+## कैसे करें: गणना किया गया मान जोड़ें
+
+गणना किए गए मान अन्य प्लेसहोल्डर से प्राप्त होते हैं। एक जोड़ने के लिए:
+
+1. `src/lib/placeholder-store.ts` में एक लुकअप तालिका जोड़ें (यदि आवश्यक हो), `cidrToMask` के पैटर्न का अनुसरण करते हुए।
+
+2. नई व्युत्पन्न कुंजी को शामिल करने के लिए `getComputedValues()` का विस्तार करें:
+   ```ts
+   export function getComputedValues(values: Record<string, string>): Record<string, string> {
+     // ... existing logic
+     return {
+       PROTECTED_MASK_V4: mask,
+       PROTECTED_PREFIX_V4: `${net}${short}`,
+       MY_COMPUTED: derivedValue,  // add here
+     };
+   }
+   ```
+
+3. किसी भी अन्य टोकन की तरह कंटेंट में `xMY_COMPUTEDx` का उपयोग करें। गणना किए गए मानों को `placeholders.json` प्रविष्टि या फ़ील्ड समूह की आवश्यकता नहीं होती — वे फॉर्म से अदृश्य होते हैं।

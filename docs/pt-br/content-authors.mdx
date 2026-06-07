@@ -1,0 +1,61 @@
+---
+title: Pré-visualização Local para Autores de Conteúdo
+description: Pré-visualize sua documentação localmente com um único comando Docker.
+sidebar:
+  order: 7
+i18n:
+  sourceHash: d5ec9a607f67
+  translator: machine
+---
+
+Pré-visualize seus documentos localmente antes de enviar as alterações. Tudo o que você precisa é do Docker e de um diretório `docs/`.
+
+## Pré-requisitos
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado e em execução
+- Seu repositório de conteúdo clonado localmente com um diretório `docs/` contendo pelo menos o arquivo `index.mdx`
+
+## Iniciar o Servidor de Desenvolvimento
+
+A partir da raiz do seu repositório de conteúdo, execute:
+
+```sh
+docker run --rm -it \
+  -v "$(pwd)/docs:/content/docs" \
+  -p 4321:4321 \
+  -e MODE=dev \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+Abra **http://localhost:4321** assim que o servidor iniciar.
+
+:::note
+Alterações nos arquivos no seu host requerem a reinicialização do contêiner. Pare-o com `Ctrl+C` e execute o comando novamente para aplicar as edições.
+:::
+
+## Imagens e Recursos Estáticos
+
+Coloque as imagens em um subdiretório como `docs/images/`. O contêiner detecta esses arquivos automaticamente — nenhuma montagem de volume adicional é necessária.
+
+Referencie-os no seu MDX com um caminho relativo à raiz:
+
+```mdx
+![Diagrama de arquitetura](/images/architecture.png)
+```
+
+## Solução de Problemas
+
+**Porta já em uso** — Mapeie para uma porta diferente no host: `-p 8080:4321`, e então abra `http://localhost:8080`.
+
+**Conteúdo não aparece** — Verifique se `docs/index.mdx` existe. Confira a saída do contêiner para uma mensagem `ERROR: No content found`.
+
+**Imagem desatualizada** — Baixe a versão mais recente:
+
+```sh
+docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+## Leitura Complementar
+
+- [Docker Build](../docker/) — Detalhes da imagem, variáveis de ambiente e builds de produção
+- [Arquitetura](../architecture/) — Modelo de injeção de conteúdo e design do sistema de temas

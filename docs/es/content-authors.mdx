@@ -1,0 +1,61 @@
+---
+title: Vista previa local para autores de contenido
+description: Previsualice su documentación localmente con un solo comando de Docker.
+sidebar:
+  order: 7
+i18n:
+  sourceHash: d5ec9a607f67
+  translator: machine
+---
+
+Previsualice sus documentos localmente antes de enviar los cambios. Todo lo que necesita es Docker y un directorio `docs/`.
+
+## Requisitos previos
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y en ejecución
+- Su repositorio de contenido clonado localmente con un directorio `docs/` que contenga al menos `index.mdx`
+
+## Iniciar el servidor de desarrollo
+
+Desde la raíz de su repositorio de contenido, ejecute:
+
+```sh
+docker run --rm -it \
+  -v "$(pwd)/docs:/content/docs" \
+  -p 4321:4321 \
+  -e MODE=dev \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+Abra **http://localhost:4321** una vez que el servidor se inicie.
+
+:::note
+Los cambios en archivos de su máquina local requieren reiniciar el contenedor. Deténgalo con `Ctrl+C` y vuelva a ejecutar el comando para aplicar las ediciones.
+:::
+
+## Imágenes y recursos estáticos
+
+Coloque las imágenes en un subdirectorio como `docs/images/`. El contenedor las detecta automáticamente — no se necesitan montajes de volúmenes adicionales.
+
+Haga referencia a ellas en su MDX con una ruta relativa a la raíz:
+
+```mdx
+![Architecture diagram](/images/architecture.png)
+```
+
+## Solución de problemas
+
+**Puerto ya en uso** — Mapee a un puerto de host diferente: `-p 8080:4321`, luego abra `http://localhost:8080`.
+
+**El contenido no aparece** — Verifique que `docs/index.mdx` exista. Revise la salida del contenedor en busca de un mensaje `ERROR: No content found`.
+
+**Imagen desactualizada** — Descargue la última versión:
+
+```sh
+docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+## Lectura adicional
+
+- [Docker Build](../docker/) — Detalles de la imagen, variables de entorno y compilaciones de producción
+- [Arquitectura](../architecture/) — Modelo de inyección de contenido y diseño del sistema de temas

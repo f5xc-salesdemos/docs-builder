@@ -1,0 +1,114 @@
+---
+title: Arquitetura
+description: >-
+  Design do sistema, estrutura de diretórios, sistema de temas e pipeline de
+  build do docs builder.
+sidebar:
+  order: 5
+i18n:
+  sourceHash: a16b586bcbe1
+  translator: machine
+---
+
+## Visão Geral
+
+O docs builder é um sistema containerizado baseado em [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/). Repositórios de conteúdo fornecem arquivos Markdown/MDX; o builder fornece o framework, tema e lógica de build. As duas partes se encontram em tempo de build dentro de um container Docker.
+
+## Modelo de Injeção de Conteúdo
+
+Os repositórios de conteúdo mantêm sua documentação em um diretório `docs/`. Em tempo de build, o container copia esses arquivos para `src/content/docs/`, onde a coleção de conteúdo do Astro os detecta.
+
+```
+content-repo/
+  docs/           ← criado pelas equipes de conteúdo
+    index.mdx
+    guide.mdx
+
+docs-builder/
+  src/content/docs/ ← vazio em repouso (.gitkeep)
+```
+
+O script de entrada (`docker/entrypoint.sh`) realiza a cópia:
+
+```sh
+cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+```
+
+Isso significa que o repositório do builder é distribuído com um diretório `src/content/docs/` vazio. O conteúdo só aparece em tempo de build.
+
+## Sistema de Temas
+
+O tema Starlight é publicado como um pacote npm separado. O `package.json` utiliza um alias npm para mapear um nome curto ao pacote do registro com escopo:
+
+```json
+"@f5xc-salesdemos/docs-theme": "^1.29.0"
+```
+
+O pacote do tema é responsável pelo `astro.config.mjs`. Em tempo de build, o entrypoint o copia para a raiz do projeto:
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+```
+
+Isso mantém a configuração centralizada — os repositórios de conteúdo e o próprio builder não mantêm suas próprias configurações do Astro.
+
+## Estrutura do Diretório Source
+
+```
+src/
+  components/
+    PlaceholderForm.tsx          # Formulário React para edição de valores de placeholder
+    PlaceholderFormWrapper.astro # Wrapper Astro, carrega script DOM e CSS global
+  content/
+    docs/                        # Ponto de montagem para conteúdo injetado
+  content.config.ts              # Definição da coleção de conteúdo do Starlight
+  data/
+    placeholders.json            # Definições de tokens de placeholder
+  lib/
+    placeholder-store.ts         # Gerenciamento de estado: carregar, salvar, computar, emitir
+  scripts/
+    placeholder-dom.ts           # TreeWalker DOM do lado do cliente e renderizador Mermaid
+```
+
+## Coleção de Conteúdo
+
+`src/content.config.ts` define uma única coleção `docs` usando o loader e schema do Starlight:
+
+```ts
+import { defineCollection } from 'astro:content';
+import { docsLoader } from '@astrojs/starlight/loaders';
+import { docsSchema } from '@astrojs/starlight/schema';
+
+export const collections = {
+  docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
+};
+```
+
+Qualquer arquivo `.md` ou `.mdx` colocado em `src/content/docs/` se torna uma página no site construído.
+
+## Fluxo de Build
+
+O diagrama a seguir mostra o pipeline de build de ponta a ponta quando o container Docker é executado:
+
+```mermaid
+flowchart LR
+    A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
+    B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    E -->|cp astro.config| F[astro.config.mjs]
+    C --> G[astro build]
+    F --> G
+    G --> H[dist/<br/>static HTML]
+    H -->|cp| I[/output]
+```
+
+## Processamento em Tempo de Build vs Tempo de Cliente
+
+| Aspecto | Quando | Como |
+|---------|--------|------|
+| MDX → HTML | Tempo de build | Compilador Astro |
+| Blocos de código Mermaid → divs container | Tempo de build | Plugin `remark-mermaid.mjs` (do `docs-theme`) |
+| Tokens de placeholder → spans interativos | Tempo de cliente | TreeWalker do `placeholder-dom.ts` |
+| Renderização SVG do Mermaid | Tempo de cliente | Importação CDN do `mermaid` em `placeholder-dom.ts` |
+| Estado do formulário de placeholder | Tempo de cliente | `placeholder-store.ts` + localStorage |
+| Transições de página do Astro | Tempo de cliente | Listener do evento `astro:page-load` |

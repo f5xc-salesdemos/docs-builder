@@ -1,0 +1,189 @@
+---
+title: Docker 빌드
+description: 'Dockerfile 레이어, 엔트리포인트 오케스트레이션, 환경 변수 및 로컬 사용법.'
+sidebar:
+  order: 4
+i18n:
+  sourceHash: f8453f94aa45
+  translator: machine
+---
+
+빌더는 Docker 이미지로 제공됩니다. 콘텐츠 저장소에서 Node.js나 Astro를 로컬에 설치하지 않고 이를 실행하여 정적 HTML을 생성합니다.
+
+## Dockerfile
+
+`docker/Dockerfile`은 `node:24-alpine` 기반의 다단계 빌드를 사용합니다:
+
+```dockerfile
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+# Install deps (cached layer)
+COPY package*.json ./
+RUN npm ci
+
+# Copy framework code
+COPY . .
+
+# Remove placeholder content
+RUN rm -rf src/content/docs/*
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+```
+
+### 레이어 전략
+
+| 레이어 | 내용 | 별도 캐싱 이유 |
+|-------|------|----------------------|
+| 1 | `COPY package*.json` + `npm ci` | 의존성은 자주 변경되지 않으므로 이 레이어를 캐싱하면 매 빌드마다 재다운로드를 방지할 수 있습니다 |
+| 2 | `COPY . .` | 프레임워크 소스 코드 |
+| 3 | `rm -rf src/content/docs/*` | 주입된 콘텐츠만 표시되도록 플레이스홀더 콘텐츠를 정리합니다 |
+| 4 | `COPY entrypoint.sh` | 빌드 오케스트레이션 스크립트 |
+
+## 엔트리포인트
+
+`docker/entrypoint.sh`는 컨테이너가 시작될 때마다 실행됩니다. 다음 단계를 순서대로 수행합니다:
+
+### 1단계: 의존성 업데이트
+
+```sh
+npm install
+npm update
+```
+
+테마 패키지와 모든 의존성이 최신 호환 버전인지 확인합니다.
+
+### 2단계: 테마 설정 복사
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+```
+
+테마 패키지에서 `astro.config.mjs`와 `content.config.ts`를 복사합니다. 테마는 Astro 설정의 단일 진실 공급원입니다 — 테마 시스템 설계에 대해서는 [아키텍처](../architecture/)를 참조하세요.
+
+### 3단계: 콘텐츠 주입
+
+```sh
+if [ -d "$CONTENT_DIR" ]; then
+  cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+else
+  echo "ERROR: No content found at $CONTENT_DIR"
+  exit 1
+fi
+```
+
+마운트된 콘텐츠를 Astro의 콘텐츠 컬렉션 디렉토리에 복사합니다. 콘텐츠 디렉토리가 없으면 오류와 함께 종료됩니다.
+
+### 4단계: 제목 추출
+
+```sh
+if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
+  DOCS_TITLE=$(grep -m1 '^title:' /app/src/content/docs/index.mdx | sed 's/title: *["]*//;s/["]*$//')
+  export DOCS_TITLE
+fi
+```
+
+`DOCS_TITLE`이 환경 변수로 설정되지 않은 경우, `index.mdx`의 `title:` 프론트매터 필드에서 추출합니다.
+
+### 5단계: 기본 경로 추출
+
+```sh
+if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
+  DOCS_BASE="/${GITHUB_REPOSITORY#*/}"
+  export DOCS_BASE
+fi
+```
+
+GitHub 저장소 이름에서 사이트 기본 경로를 도출합니다 (예: `owner/my-docs`는 `/my-docs`가 됩니다).
+
+### 6단계: 빌드
+
+```sh
+npm run build
+```
+
+`astro build`를 실행하여 `/app/dist/`에 정적 출력을 생성합니다.
+
+### 7단계: 출력 복사
+
+```sh
+if [ -d "$OUTPUT_DIR" ]; then
+  cp -r /app/dist/* "$OUTPUT_DIR"/
+fi
+```
+
+빌드된 사이트를 출력 마운트 포인트에 복사합니다.
+
+## 환경 변수
+
+| 변수 | 기본값 | 설명 |
+|----------|---------|-------------|
+| `CONTENT_DIR` | `/content/docs` | 마운트된 콘텐츠 디렉토리 경로 |
+| `OUTPUT_DIR` | `/output` | 빌드된 사이트가 복사되는 경로 |
+| `DOCS_TITLE` | *(index.mdx에서 추출)* | Astro 설정에 전달되는 사이트 제목 |
+| `DOCS_DESCRIPTION` | *(index.mdx에서 추출)* | 프론트매터의 사이트 설명 |
+| `DOCS_BASE` | *(`GITHUB_REPOSITORY`에서 도출)* | 사이트의 기본 경로 (예: `/my-docs`) |
+| `DOCS_SITE` | *(`GITHUB_REPOSITORY_OWNER`에서 도출)* | Astro 설정에 전달되는 사이트 URL (예: `https://<owner>.github.io`) |
+| `GITHUB_REPOSITORY` | *(GitHub Actions에서 설정)* | `DOCS_BASE`를 도출하는 데 사용되는 `owner/repo` 문자열 |
+| `GENERATE_PDF` | `false` | 빌드 후 PDF 생성 활성화 |
+| `PDF_FILENAME` | `docs` | 생성된 PDF의 출력 파일명 |
+| `LLMS_OPTIONAL_LINKS` | `[]` | `llms.txt` Optional 섹션을 위한 하위 사이트 URL의 JSON 배열 |
+
+## 로컬 사용법
+
+Docker를 사용하여 문서를 로컬에서 빌드하려면:
+
+```sh
+docker run --rm \
+  -v "$(pwd)/docs:/content/docs" \
+  -v "$(pwd)/output:/output" \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+이 명령은 로컬 `docs/` 디렉토리를 콘텐츠로 마운트하고 빌드된 사이트를 `output/`에 출력합니다.
+
+라이브 개발 서버 워크플로를 원하는 콘텐츠 작성자는 [콘텐츠 작성자를 위한 로컬 미리보기](../content-authors/)를 참조하세요.
+
+## 개발자: 로컬 개발 서버
+
+빌더 자체(컴포넌트, 플러그인, 테마 통합)를 작업할 때는 Docker 없이 Astro의 개발 서버를 직접 실행할 수 있습니다:
+
+```sh
+npm ci
+cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+# Copy some test content into the content collection
+cp -r /path/to/test-content/* src/content/docs/
+DOCS_TITLE="Dev Test" npx astro dev --host
+```
+
+`http://localhost:4321`을 열면 됩니다. 컴포넌트 및 플러그인 변경에 대해 핫 모듈 교체(HMR)가 작동합니다.
+
+:::note
+`astro.config.mjs`와 `content.config.ts`는 테마 패키지에서 제공되며 이 저장소에서 버전 관리되지 않습니다. 개발 서버를 실행하기 전에 `node_modules`에서 복사해야 합니다. Docker 빌드에서는 엔트리포인트가 이를 자동으로 처리합니다.
+:::
+
+:::note
+`src/content/docs/`는 이미지 빌드 시 비워지며 gitignore에 포함되어 있습니다. 테스트 콘텐츠를 수동으로 배치하세요 — 커밋되지 않습니다.
+:::
+
+## 이미지 레지스트리
+
+이미지는 GitHub Container Registry에 게시됩니다:
+
+```
+ghcr.io/f5xc-salesdemos/docs-builder
+```
+
+매 빌드마다 두 개의 태그가 푸시됩니다:
+
+| 태그 | 설명 |
+|-----|-------------|
+| `latest` | `main`에서의 가장 최근 빌드 |
+| `<sha>` | 재현 가능한 빌드를 위한 전체 Git 커밋 SHA |
+
+이미지를 빌드하고 게시하는 워크플로에 대해서는 [CI/CD 및 거버넌스](../ci-cd/)를 참조하세요.

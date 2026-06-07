@@ -1,0 +1,112 @@
+---
+title: 架构
+description: 文档构建器的系统设计、目录布局、主题系统和构建流水线。
+sidebar:
+  order: 5
+i18n:
+  sourceHash: a16b586bcbe1
+  translator: machine
+---
+
+## 概述
+
+文档构建器是一个容器化的 [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) 系统。内容仓库提供 Markdown/MDX 文件；构建器提供框架、主题和构建逻辑。两部分在 Docker 容器中的构建阶段汇合。
+
+## 内容注入模型
+
+内容仓库将文档保存在 `docs/` 目录中。在构建时，容器将这些文件复制到 `src/content/docs/` 中，由 Astro 的内容集合进行处理。
+
+```
+content-repo/
+  docs/           ← 由内容团队编写
+    index.mdx
+    guide.mdx
+
+docs-builder/
+  src/content/docs/ ← 静态时为空（.gitkeep）
+```
+
+入口脚本（`docker/entrypoint.sh`）执行复制操作：
+
+```sh
+cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+```
+
+这意味着构建器仓库本身自带一个空的 `src/content/docs/` 目录。内容仅在构建时出现。
+
+## 主题系统
+
+Starlight 主题作为独立的 npm 包发布。`package.json` 使用 npm 别名将短名称映射到作用域注册包：
+
+```json
+"@f5xc-salesdemos/docs-theme": "^1.29.0"
+```
+
+主题包拥有 `astro.config.mjs`。在构建时，入口脚本将其复制到项目根目录：
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+```
+
+这使配置保持集中管理——内容仓库和构建器本身都不需要维护各自的 Astro 配置。
+
+## 源码目录布局
+
+```
+src/
+  components/
+    PlaceholderForm.tsx          # 用于编辑占位符值的 React 表单
+    PlaceholderFormWrapper.astro # Astro 包装器，加载 DOM 脚本和全局 CSS
+  content/
+    docs/                        # 注入内容的挂载点
+  content.config.ts              # Starlight 内容集合定义
+  data/
+    placeholders.json            # 占位符令牌定义
+  lib/
+    placeholder-store.ts         # 状态管理：加载、保存、计算、发送
+  scripts/
+    placeholder-dom.ts           # 客户端 DOM 遍历器和 Mermaid 渲染器
+```
+
+## 内容集合
+
+`src/content.config.ts` 使用 Starlight 的加载器和模式定义了单个 `docs` 集合：
+
+```ts
+import { defineCollection } from 'astro:content';
+import { docsLoader } from '@astrojs/starlight/loaders';
+import { docsSchema } from '@astrojs/starlight/schema';
+
+export const collections = {
+  docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
+};
+```
+
+放置在 `src/content/docs/` 中的任何 `.md` 或 `.mdx` 文件都会成为构建站点中的一个页面。
+
+## 构建流程
+
+以下图表展示了 Docker 容器运行时的端到端构建流水线：
+
+```mermaid
+flowchart LR
+    A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
+    B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    E -->|cp astro.config| F[astro.config.mjs]
+    C --> G[astro build]
+    F --> G
+    G --> H[dist/<br/>static HTML]
+    H -->|cp| I[/output]
+```
+
+## 构建时处理与客户端处理
+
+| 关注点 | 时机 | 方式 |
+|---------|------|------|
+| MDX → HTML | 构建时 | Astro 编译器 |
+| Mermaid 代码块 → 容器 div | 构建时 | `remark-mermaid.mjs` 插件（来自 `docs-theme`） |
+| 占位符令牌 → 交互式 span | 客户端 | `placeholder-dom.ts` TreeWalker |
+| Mermaid SVG 渲染 | 客户端 | `placeholder-dom.ts` 中的 `mermaid` CDN 导入 |
+| 占位符表单状态 | 客户端 | `placeholder-store.ts` + localStorage |
+| Astro 页面过渡 | 客户端 | `astro:page-load` 事件监听器 |

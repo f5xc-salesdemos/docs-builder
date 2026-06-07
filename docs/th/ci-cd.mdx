@@ -1,0 +1,144 @@
+---
+title: CI/CD และการกำกับดูแล
+description: 'เวิร์กโฟลว์ GitHub Actions, การซิงค์เทมเพลต, secrets และการป้องกันสาขา'
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 3b4552f7ab42
+  translator: machine
+---
+
+ที่เก็บโค้ดนี้ใช้เวิร์กโฟลว์ GitHub Actions สี่รายการและระบบเทมเพลตแบบรวมศูนย์สำหรับการกำกับดูแล
+
+## เวิร์กโฟลว์
+
+| เวิร์กโฟลว์ | ไฟล์ | ทริกเกอร์ | วัตถุประสงค์ |
+|----------|------|---------|---------|
+| GitHub Pages Deploy | `github-pages-deploy.yml` | Push ไปยัง `main` (`docs/**`), dispatch แบบ manual | สร้างและ deploy ไซต์เอกสารประกอบไปยัง GitHub Pages |
+| Build and Publish Docker Image | `build-image.yml` | Push ไปยัง `main` (`docker/**`, `package*.json`), cron รายวัน, `repository_dispatch` | สร้าง Docker image, push ไปยัง GHCR และส่ง dispatch เพื่อ rebuild ไปยัง repo ปลายทาง |
+| Require Linked Issue | `require-linked-issue.yml` | เหตุการณ์ Pull request | บล็อก PR ที่ไม่ได้อ้างอิง GitHub issue |
+| Enforce Repository Settings | `enforce-repo-settings.yml` | ทุก 6 ชั่วโมง, push ไปยังไฟล์กำหนดค่า settings, dispatch แบบ manual | ใช้การตั้งค่า repo มาตรฐานจากเทมเพลต |
+
+### GitHub Pages Deploy
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+```
+
+มอบหมายงานให้กับเวิร์กโฟลว์ที่ใช้ซ้ำได้ในที่เก็บเทมเพลต:
+
+```yaml
+jobs:
+  docs:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+```
+
+สิทธิ์: `contents: read`, `packages: read`, `pages: write`, `id-token: write` ใช้กลุ่ม concurrency `pages` พร้อม `cancel-in-progress: true` เพื่อหลีกเลี่ยงการ deploy ที่ล้าสมัย
+
+ทริกเกอร์เมื่อ push เฉพาะเมื่อไฟล์ภายใต้ `docs/` มีการเปลี่ยนแปลง สามารถทริกเกอร์ด้วยตนเองผ่าน `workflow_dispatch` ซึ่งเป็นวิธีที่ dispatch job ใน `build-image.yml` ทริกเกอร์การ rebuild ไปยัง repo ปลายทาง
+
+### Build and Publish Docker Image
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    - cron: '0 6 * * *'
+  repository_dispatch:
+    types: [rebuild-image]
+```
+
+ขั้นตอน:
+1. Checkout โค้ด
+2. เข้าสู่ระบบ `ghcr.io` โดยใช้ `docker/login-action`
+3. สร้างและ push โดยใช้ `docker/build-push-action` พร้อม context `.` และไฟล์ `docker/Dockerfile`
+4. แท็ก: `ghcr.io/<owner>/<repo>:latest` และ `ghcr.io/<owner>/<repo>:<sha>`
+
+หลังจากสร้างสำเร็จ **dispatch** job จะทริกเกอร์ `github-pages-deploy.yml` ผ่าน `workflow_dispatch` ในทุก repo ปลายทางที่ระบุไว้ในไฟล์กำหนดค่า `downstream-repos.json` ของที่เก็บเทมเพลต สิ่งนี้ช่วยให้ repo เนื้อหาทั้งหมดสร้างเอกสารประกอบใหม่ด้วย builder image ที่อัปเดตแล้ว
+
+cron รายวันช่วยให้ image เป็นปัจจุบันอยู่เสมอแม้ไม่มีการเปลี่ยนแปลงโค้ด (รับการอัปเดต dependency) เหตุการณ์ `repository_dispatch` อนุญาตให้ระบบภายนอกทริกเกอร์การ rebuild
+
+ทริกเกอร์เมื่อ push เฉพาะเมื่อไฟล์ `docker/` หรือ `package*.json` มีการเปลี่ยนแปลง การเปลี่ยนแปลงเฉพาะเอกสารประกอบจะไม่ทริกเกอร์การ rebuild image
+
+### Require Linked Issue
+
+```yaml
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+```
+
+ใช้ `nearform-actions/github-action-check-linked-issues@v1` เพื่อบังคับให้ทุก PR อ้างอิง GitHub issue (เช่น `Closes #42` ในคำอธิบาย) PR จาก Dependabot ถูกยกเว้นผ่าน:
+
+```yaml
+exclude-branches: "dependabot/**"
+```
+
+ข้อความที่กำหนดเองจะแจ้งให้ผู้ร่วมพัฒนาทราบรูปแบบที่คาดหวังหากการตรวจสอบล้มเหลว ดู [CONTRIBUTING.md](../CONTRIBUTING.md) สำหรับเวิร์กโฟลว์ผู้ร่วมพัฒนาฉบับเต็ม
+
+### Enforce Repository Settings
+
+```yaml
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/config/repo-settings.json'
+  workflow_dispatch:
+```
+
+มอบหมายงานให้กับเวิร์กโฟลว์ที่ใช้ซ้ำได้ในที่เก็บเทมเพลต:
+
+```yaml
+jobs:
+  enforce:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    secrets:
+      repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
+```
+
+ทำงานทุก 6 ชั่วโมงและเมื่อมีการเปลี่ยนแปลงไฟล์กำหนดค่า settings ใช้กฎการป้องกันสาขา การตั้งค่าการ merge และการกำหนดค่าที่เก็บโค้ดอื่นๆ จาก `.github/config/repo-settings.json`
+
+## โมเดลการกำกับดูแล
+
+### เทมเพลตแบบรวมศูนย์
+
+ที่เก็บ `f5xc-salesdemos/docs-control` เป็นแหล่งข้อมูลที่เชื่อถือได้แหล่งเดียวสำหรับ:
+
+- คำจำกัดความเวิร์กโฟลว์ที่ใช้ซ้ำได้ (docs deploy, การบังคับใช้การตั้งค่า repo)
+- ไฟล์ที่จัดการแล้วที่ซิงค์ข้าม repo ทั้งหมดในองค์กร
+- การกำหนดค่ามาตรฐานและกฎการป้องกันสาขา
+
+builder นี้และ repo เนื้อหาทั้งหมดสืบทอดพฤติกรรม CI/CD จากเทมเพลต
+
+### การซิงค์ไฟล์ที่จัดการ
+
+ที่เก็บเทมเพลตสามารถ push ไฟล์ที่จัดการ (เช่น คำจำกัดความเวิร์กโฟลว์และไฟล์กำหนดค่า) ไปยัง repo ปลายทาง สิ่งนี้ทำให้ที่เก็บโค้ดทั้งหมดสอดคล้องกันโดยไม่ต้องอัปเดตด้วยตนเอง การซิงค์ทำงานผ่านเวิร์กโฟลว์แยกต่างหากในที่เก็บเทมเพลต
+
+### การป้องกันสาขา
+
+เวิร์กโฟลว์ enforce-repo-settings ใช้กฎการป้องกันสาขาจากเทมเพลต รวมถึง:
+
+- จำเป็นต้องผ่านการตรวจสอบสถานะก่อน merge
+- จำเป็นต้องมีการตรวจสอบ linked issue
+- แนะนำ squash merge
+- ลบ head branch อัตโนมัติหลัง merge
+
+## Secrets
+
+| Secret | แหล่งที่มา | วัตถุประสงค์ |
+|--------|--------|---------|
+| `GITHUB_TOKEN` | อัตโนมัติ (GitHub) | ใช้โดยเวิร์กโฟลว์ส่วนใหญ่สำหรับ checkout, การเผยแพร่แพ็กเกจ และการเรียก API |
+| `REPO_ADMIN_TOKEN` | ด้วยตนเอง (repository secret) | จำเป็นสำหรับ enforce-repo-settings และ dispatch job เพื่อแก้ไขการป้องกันสาขา การตั้งค่า repo และทริกเกอร์เวิร์กโฟลว์ปลายทาง (ต้องการ admin scope) |

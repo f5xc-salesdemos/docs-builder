@@ -1,0 +1,189 @@
+---
+title: Docker 建置
+description: Dockerfile 層級、entrypoint 編排、環境變數及本機使用方式。
+sidebar:
+  order: 4
+i18n:
+  sourceHash: f8453f94aa45
+  translator: machine
+---
+
+建置器以 Docker 映像的形式發佈。內容儲存庫透過執行它來產生靜態 HTML，無需在本機安裝 Node.js 或 Astro。
+
+## Dockerfile
+
+`docker/Dockerfile` 使用基於 `node:24-alpine` 的多步驟建置：
+
+```dockerfile
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+# Install deps (cached layer)
+COPY package*.json ./
+RUN npm ci
+
+# Copy framework code
+COPY . .
+
+# Remove placeholder content
+RUN rm -rf src/content/docs/*
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+```
+
+### 層級策略
+
+| 層級 | 內容 | 為何單獨快取 |
+|------|------|-------------|
+| 1 | `COPY package*.json` + `npm ci` | 依賴套件不常變更；快取此層可避免每次建置都重新下載 |
+| 2 | `COPY . .` | 框架原始碼 |
+| 3 | `rm -rf src/content/docs/*` | 清除所有佔位內容，確保只顯示注入的內容 |
+| 4 | `COPY entrypoint.sh` | 建置編排腳本 |
+
+## Entrypoint
+
+`docker/entrypoint.sh` 在每次容器啟動時執行。它按順序執行以下步驟：
+
+### 步驟 1：更新依賴套件
+
+```sh
+npm install
+npm update
+```
+
+確保主題套件及所有依賴套件都處於最新的相容版本。
+
+### 步驟 2：複製主題設定
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+```
+
+從主題套件複製 `astro.config.mjs` 和 `content.config.ts`。主題是 Astro 設定的唯一真實來源——請參閱[架構](../architecture/)以了解主題系統設計。
+
+### 步驟 3：注入內容
+
+```sh
+if [ -d "$CONTENT_DIR" ]; then
+  cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+else
+  echo "ERROR: No content found at $CONTENT_DIR"
+  exit 1
+fi
+```
+
+將掛載的內容複製到 Astro 的內容集合目錄中。如果內容目錄不存在，則以錯誤結束。
+
+### 步驟 4：擷取標題
+
+```sh
+if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
+  DOCS_TITLE=$(grep -m1 '^title:' /app/src/content/docs/index.mdx | sed 's/title: *["]*//;s/["]*$//')
+  export DOCS_TITLE
+fi
+```
+
+如果 `DOCS_TITLE` 未透過環境變數設定，則從 `index.mdx` 的 `title:` frontmatter 欄位中擷取。
+
+### 步驟 5：擷取基礎路徑
+
+```sh
+if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
+  DOCS_BASE="/${GITHUB_REPOSITORY#*/}"
+  export DOCS_BASE
+fi
+```
+
+從 GitHub 儲存庫名稱推導網站基礎路徑（例如，`owner/my-docs` 變為 `/my-docs`）。
+
+### 步驟 6：建置
+
+```sh
+npm run build
+```
+
+執行 `astro build`，在 `/app/dist/` 中產生靜態輸出。
+
+### 步驟 7：複製輸出
+
+```sh
+if [ -d "$OUTPUT_DIR" ]; then
+  cp -r /app/dist/* "$OUTPUT_DIR"/
+fi
+```
+
+將建置好的網站複製到輸出掛載點。
+
+## 環境變數
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `CONTENT_DIR` | `/content/docs` | 掛載的內容目錄路徑 |
+| `OUTPUT_DIR` | `/output` | 建置好的網站複製到的路徑 |
+| `DOCS_TITLE` | *（從 index.mdx 擷取）* | 傳遞給 Astro 設定的網站標題 |
+| `DOCS_DESCRIPTION` | *（從 index.mdx 擷取）* | 來自 frontmatter 的網站描述 |
+| `DOCS_BASE` | *（從 `GITHUB_REPOSITORY` 推導）* | 網站的基礎路徑（例如 `/my-docs`） |
+| `DOCS_SITE` | *（從 `GITHUB_REPOSITORY_OWNER` 推導）* | 傳遞給 Astro 設定的網站 URL（例如 `https://<owner>.github.io`） |
+| `GITHUB_REPOSITORY` | *（由 GitHub Actions 設定）* | 用於推導 `DOCS_BASE` 的 `owner/repo` 字串 |
+| `GENERATE_PDF` | `false` | 建置後啟用 PDF 產生 |
+| `PDF_FILENAME` | `docs` | 產生的 PDF 輸出檔案名稱 |
+| `LLMS_OPTIONAL_LINKS` | `[]` | 用於 `llms.txt` Optional 區段的子網站 URL JSON 陣列 |
+
+## 本機使用
+
+使用 Docker 在本機建置文件：
+
+```sh
+docker run --rm \
+  -v "$(pwd)/docs:/content/docs" \
+  -v "$(pwd)/output:/output" \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+這會將本機 `docs/` 目錄掛載為內容，並將建置好的網站寫入 `output/`。
+
+若內容作者想要即時開發伺服器工作流程，請參閱[內容作者本機預覽](../content-authors/)。
+
+## 開發者：本機開發伺服器
+
+當您在開發建置器本身（元件、外掛程式、主題整合）時，可以直接執行 Astro 的開發伺服器，無需 Docker：
+
+```sh
+npm ci
+cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+# Copy some test content into the content collection
+cp -r /path/to/test-content/* src/content/docs/
+DOCS_TITLE="Dev Test" npx astro dev --host
+```
+
+開啟 `http://localhost:4321`。熱模組替換（HMR）適用於元件和外掛程式的變更。
+
+:::note
+`astro.config.mjs` 和 `content.config.ts` 來自主題套件，不在此儲存庫中進行版本控制。您必須在執行開發伺服器之前從 `node_modules` 複製它們。entrypoint 在 Docker 建置中會自動處理此操作。
+:::
+
+:::note
+`src/content/docs/` 在映像建置時會被清空，並已加入 gitignore。請手動將測試內容放置在此處——它不會被提交。
+:::
+
+## 映像登錄
+
+映像發佈至 GitHub Container Registry：
+
+```
+ghcr.io/f5xc-salesdemos/docs-builder
+```
+
+每次建置時推送兩個標籤：
+
+| 標籤 | 說明 |
+|------|------|
+| `latest` | 來自 `main` 的最新建置 |
+| `<sha>` | 完整的 Git commit SHA，用於可重現的建置 |
+
+請參閱 [CI/CD 與治理](../ci-cd/)以了解建置和發佈映像的工作流程。

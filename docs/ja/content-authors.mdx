@@ -1,0 +1,61 @@
+---
+title: コンテンツ作成者向けローカルプレビュー
+description: 単一のDockerコマンドでドキュメントをローカルプレビューできます。
+sidebar:
+  order: 7
+i18n:
+  sourceHash: d5ec9a607f67
+  translator: machine
+---
+
+変更をプッシュする前に、ドキュメントをローカルでプレビューできます。必要なのはDockerと `docs/` ディレクトリだけです。
+
+## 前提条件
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) がインストールされ、実行されていること
+- 少なくとも `index.mdx` を含む `docs/` ディレクトリがあるコンテンツリポジトリがローカルにクローンされていること
+
+## 開発サーバーの起動
+
+コンテンツリポジトリのルートから、以下のコマンドを実行します：
+
+```sh
+docker run --rm -it \
+  -v "$(pwd)/docs:/content/docs" \
+  -p 4321:4321 \
+  -e MODE=dev \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+サーバーが起動したら **http://localhost:4321** を開きます。
+
+:::note
+ホスト上のファイル変更を反映するには、コンテナの再起動が必要です。`Ctrl+C` で停止し、コマンドを再実行して編集内容を反映してください。
+:::
+
+## 画像と静的アセット
+
+画像は `docs/images/` のようなサブディレクトリに配置します。コンテナがこれらを自動的に検出するため、追加のボリュームマウントは不要です。
+
+MDX内ではルート相対パスで参照します：
+
+```mdx
+![Architecture diagram](/images/architecture.png)
+```
+
+## トラブルシューティング
+
+**ポートが既に使用されている場合** — 別のホストポートにマッピングします：`-p 8080:4321` とし、`http://localhost:8080` を開きます。
+
+**コンテンツが表示されない場合** — `docs/index.mdx` が存在することを確認してください。コンテナの出力で `ERROR: No content found` メッセージがないか確認してください。
+
+**イメージが古い場合** — 最新バージョンをプルします：
+
+```sh
+docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+## 参考資料
+
+- [Docker Build](../docker/) — イメージの詳細、環境変数、本番ビルド
+- [Architecture](../architecture/) — コンテンツインジェクションモデルとテーマシステムの設計

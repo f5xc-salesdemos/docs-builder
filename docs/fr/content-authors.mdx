@@ -1,0 +1,61 @@
+---
+title: Aperçu local pour les auteurs de contenu
+description: Prévisualisez votre documentation localement avec une seule commande Docker.
+sidebar:
+  order: 7
+i18n:
+  sourceHash: d5ec9a607f67
+  translator: machine
+---
+
+Prévisualisez votre documentation localement avant de pousser vos modifications. Tout ce dont vous avez besoin est Docker et un répertoire `docs/`.
+
+## Prérequis
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installé et en cours d'exécution
+- Votre dépôt de contenu cloné localement avec un répertoire `docs/` contenant au minimum `index.mdx`
+
+## Démarrer le serveur de développement
+
+Depuis la racine de votre dépôt de contenu, exécutez :
+
+```sh
+docker run --rm -it \
+  -v "$(pwd)/docs:/content/docs" \
+  -p 4321:4321 \
+  -e MODE=dev \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+Ouvrez **http://localhost:4321** une fois que le serveur a démarré.
+
+:::note
+Les modifications de fichiers sur votre hôte nécessitent un redémarrage du conteneur. Arrêtez-le avec `Ctrl+C` et relancez la commande pour prendre en compte les modifications.
+:::
+
+## Images et ressources statiques
+
+Placez les images dans un sous-répertoire comme `docs/images/`. Le conteneur les détecte automatiquement — aucun montage de volume supplémentaire n'est nécessaire.
+
+Référencez-les dans votre MDX avec un chemin relatif à la racine :
+
+```mdx
+![Architecture diagram](/images/architecture.png)
+```
+
+## Dépannage
+
+**Port déjà utilisé** — Mappez vers un port hôte différent : `-p 8080:4321`, puis ouvrez `http://localhost:8080`.
+
+**Le contenu n'apparaît pas** — Vérifiez que `docs/index.mdx` existe. Consultez la sortie du conteneur pour un message `ERROR: No content found`.
+
+**Image obsolète** — Tirez la dernière version :
+
+```sh
+docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+## Lectures complémentaires
+
+- [Docker Build](../docker/) — Détails de l'image, variables d'environnement et builds de production
+- [Architecture](../architecture/) — Modèle d'injection de contenu et conception du système de thèmes

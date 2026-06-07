@@ -1,0 +1,146 @@
+---
+title: CI/CD e Governança
+description: >-
+  Workflows do GitHub Actions, sincronização de templates, secrets e proteção de
+  branches.
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 3b4552f7ab42
+  translator: machine
+---
+
+O repositório utiliza quatro workflows do GitHub Actions e um sistema centralizado de templates para governança.
+
+## Workflows
+
+| Workflow | Arquivo | Gatilho | Propósito |
+|----------|---------|---------|-----------|
+| GitHub Pages Deploy | `github-pages-deploy.yml` | Push para `main` (`docs/**`), dispatch manual | Compila e implanta o site de documentação no GitHub Pages |
+| Build and Publish Docker Image | `build-image.yml` | Push para `main` (`docker/**`, `package*.json`), cron diário, `repository_dispatch` | Compila a imagem Docker, envia para o GHCR e dispara rebuilds nos repositórios downstream |
+| Require Linked Issue | `require-linked-issue.yml` | Eventos de pull request | Bloqueia PRs que não referenciam uma issue do GitHub |
+| Enforce Repository Settings | `enforce-repo-settings.yml` | A cada 6 horas, push na configuração de settings, dispatch manual | Aplica configurações padronizadas do repositório a partir do template |
+
+### GitHub Pages Deploy
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+```
+
+Delega para um workflow reutilizável no repositório de template:
+
+```yaml
+jobs:
+  docs:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+```
+
+Permissões: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Utiliza o grupo de concorrência `pages` com `cancel-in-progress: true` para evitar implantações desatualizadas.
+
+Só é acionado no push quando arquivos em `docs/` são alterados. Também pode ser acionado manualmente via `workflow_dispatch`, que é como o job de dispatch em `build-image.yml` aciona rebuilds nos repositórios downstream.
+
+### Build and Publish Docker Image
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    - cron: '0 6 * * *'
+  repository_dispatch:
+    types: [rebuild-image]
+```
+
+Etapas:
+1. Checkout do código
+2. Login no `ghcr.io` usando `docker/login-action`
+3. Build e push usando `docker/build-push-action` com contexto `.` e arquivo `docker/Dockerfile`
+4. Tags: `ghcr.io/<owner>/<repo>:latest` e `ghcr.io/<owner>/<repo>:<sha>`
+
+Após um build bem-sucedido, o job de **dispatch** aciona `github-pages-deploy.yml` via `workflow_dispatch` em cada repositório downstream listado na configuração `downstream-repos.json` do repositório de template. Isso garante que todos os repositórios de conteúdo recompilam sua documentação com a imagem de builder atualizada.
+
+O cron diário garante que a imagem permaneça atualizada mesmo sem alterações no código (captura atualizações de dependências). O evento `repository_dispatch` permite que sistemas externos acionem um rebuild.
+
+Só é acionado no push quando arquivos em `docker/` ou `package*.json` são alterados. Alterações somente na documentação não acionam um rebuild da imagem.
+
+### Require Linked Issue
+
+```yaml
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+```
+
+Utiliza `nearform-actions/github-action-check-linked-issues@v1` para garantir que cada PR referencie uma issue do GitHub (por exemplo, `Closes #42` na descrição). PRs do Dependabot são excluídos via:
+
+```yaml
+exclude-branches: "dependabot/**"
+```
+
+Uma mensagem personalizada informa aos contribuidores o formato esperado caso a verificação falhe. Consulte [CONTRIBUTING.md](../CONTRIBUTING.md) para o fluxo completo de contribuição.
+
+### Enforce Repository Settings
+
+```yaml
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/config/repo-settings.json'
+  workflow_dispatch:
+```
+
+Delega para um workflow reutilizável no repositório de template:
+
+```yaml
+jobs:
+  enforce:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    secrets:
+      repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
+```
+
+Executa a cada 6 horas e em alterações no arquivo de configuração de settings. Aplica regras de proteção de branch, configurações de merge e outras configurações do repositório a partir de `.github/config/repo-settings.json`.
+
+## Modelo de Governança
+
+### Template Centralizado
+
+O repositório `f5xc-salesdemos/docs-control` é a fonte única de verdade para:
+
+- Definições de workflows reutilizáveis (deploy de docs, aplicação de configurações do repositório)
+- Arquivos gerenciados sincronizados em todos os repositórios da organização
+- Configurações padrão e regras de proteção de branch
+
+Este builder e todos os repositórios de conteúdo herdam seu comportamento de CI/CD do template.
+
+### Sincronização de Arquivos Gerenciados
+
+O repositório de template pode enviar arquivos gerenciados (como definições de workflows e arquivos de configuração) para repositórios downstream. Isso mantém todos os repositórios alinhados sem atualizações manuais. A sincronização é executada por meio de um workflow separado no repositório de template.
+
+### Proteção de Branch
+
+O workflow enforce-repo-settings aplica regras de proteção de branch a partir do template, incluindo:
+
+- Verificações de status obrigatórias antes do merge
+- Verificação obrigatória de issue vinculada
+- Squash merge preferido
+- Exclusão automática de branches head após o merge
+
+## Secrets
+
+| Secret | Origem | Propósito |
+|--------|--------|-----------|
+| `GITHUB_TOKEN` | Automático (GitHub) | Utilizado pela maioria dos workflows para checkout, publicação de pacotes e chamadas de API |
+| `REPO_ADMIN_TOKEN` | Manual (secret do repositório) | Necessário pelo enforce-repo-settings e pelo job de dispatch para modificar proteção de branch, configurações do repositório e acionar workflows downstream (requer escopo admin) |

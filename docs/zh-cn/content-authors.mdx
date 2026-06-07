@@ -1,0 +1,61 @@
+---
+title: 内容作者的本地预览
+description: 使用单个 Docker 命令在本地预览您的文档。
+sidebar:
+  order: 7
+i18n:
+  sourceHash: d5ec9a607f67
+  translator: machine
+---
+
+在推送更改之前，在本地预览您的文档。您只需要 Docker 和一个 `docs/` 目录。
+
+## 前提条件
+
+- 已安装并运行 [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- 已在本地克隆您的内容仓库，且包含一个 `docs/` 目录，其中至少包含 `index.mdx`
+
+## 启动开发服务器
+
+在内容仓库的根目录下运行：
+
+```sh
+docker run --rm -it \
+  -v "$(pwd)/docs:/content/docs" \
+  -p 4321:4321 \
+  -e MODE=dev \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+服务器启动后，打开 **http://localhost:4321**。
+
+:::note
+主机上的文件更改需要重启容器。使用 `Ctrl+C` 停止容器，然后重新运行命令以加载编辑内容。
+:::
+
+## 图片和静态资源
+
+将图片放置在子目录中，例如 `docs/images/`。容器会自动检测这些文件——无需额外的卷挂载。
+
+在 MDX 中使用根相对路径引用它们：
+
+```mdx
+![Architecture diagram](/images/architecture.png)
+```
+
+## 故障排除
+
+**端口已被占用** — 映射到不同的主机端口：`-p 8080:4321`，然后打开 `http://localhost:8080`。
+
+**内容未显示** — 确认 `docs/index.mdx` 文件存在。检查容器输出中是否有 `ERROR: No content found` 消息。
+
+**镜像过旧** — 拉取最新版本：
+
+```sh
+docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+## 延伸阅读
+
+- [Docker 构建](../docker/) — 镜像详情、环境变量和生产构建
+- [架构](../architecture/) — 内容注入模型和主题系统设计

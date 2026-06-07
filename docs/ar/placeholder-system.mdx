@@ -1,0 +1,214 @@
+---
+title: نظام العناصر النائبة
+description: >-
+  تنسيق الرموز، إدارة الحالة، مستعرض DOM، القيم المحسوبة، وكيفية إضافة عناصر
+  نائبة جديدة.
+sidebar:
+  order: 2
+i18n:
+  sourceHash: a92367b93514
+  translator: machine
+---
+
+يتيح نظام العناصر النائبة للقراء تخصيص عناوين IP وأرقام ASN والقيم الأخرى المرتبطة بالنشر عبر الوثائق. يكتب المؤلفون رموزاً في ملفات Markdown الخاصة بهم؛ ويستبدلها المتصفح بالقيم التي يوفرها المستخدم في وقت التشغيل.
+
+## تنسيق الرموز
+
+تتبع الرموز نمط التعبير النمطي التالي:
+
+```
+x([A-Z][A-Z0-9_]+)x
+```
+
+يبدأ الرمز وينتهي بحرف `x` صغير ويحتوي على معرّف بأحرف كبيرة. على سبيل المثال، `xCUSTOMER_ASNx` يشير إلى العنصر النائب `CUSTOMER_ASN`.
+
+التعبير النمطي معرّف في `src/scripts/placeholder-dom.ts`:
+
+```ts
+const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
+```
+
+## تعريفات العناصر النائبة
+
+يتم الإعلان عن جميع العناصر النائبة في `src/data/placeholders.json`. كل إدخال له الشكل التالي:
+
+```json
+{
+  "CUSTOMER_ASN": {
+    "type": "text",
+    "default": "64496",
+    "description": "Your public ASN (registered with ARIN/RIR)"
+  }
+}
+```
+
+| الحقل | مطلوب | الوصف |
+|-------|----------|-------------|
+| `type` | نعم | `"text"` لإدخال نص حر، `"dropdown"` لقوائم الاختيار |
+| `default` | نعم | القيمة الأولية المعروضة قبل أن يغيّرها القارئ |
+| `description` | نعم | التسمية المعروضة في النموذج |
+| `options` | فقط للقوائم المنسدلة | مصفوفة من القيم المسموح بها |
+
+## إدارة الحالة
+
+يتولى `src/lib/placeholder-store.ts` إدارة جميع حالات العناصر النائبة.
+
+### التخزين
+
+تُحفظ القيم في `localStorage` تحت المفتاح `f5xc-placeholders`. يوفر المخزن أربع دوال:
+
+| الدالة | الغرض |
+|----------|---------|
+| `getDefaults()` | تُرجع خريطة لكل مفتاح عنصر نائب مع قيمته الافتراضية `default` من ملف JSON |
+| `loadValues()` | تقرأ من localStorage، وتعود إلى `getDefaults()` في حال عدم وجود بيانات |
+| `saveValues(values)` | تكتب الخريطة الحالية في localStorage |
+| `clearValues()` | تحذف إدخال localStorage |
+
+### مجموعات الحقول
+
+ينظم `FIELD_GROUPS` مفاتيح العناصر النائبة في أقسام مُسمّاة لواجهة النموذج:
+
+```ts
+export const FIELD_GROUPS: FieldGroup[] = [
+  { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
+  { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
+  { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
+  // ... مجموعات إضافية
+];
+```
+
+### القيم المحسوبة
+
+بعض القيم مشتقة من مدخلات المستخدم بدلاً من إدخالها مباشرة. تحسب `getComputedValues()` هذه القيم من جداول البحث:
+
+```ts
+const cidrToMask: Record<string, string> = {
+  '/24 (256 IPs)': '255.255.255.0',
+  '/23 (512 IPs)': '255.255.254.0',
+  // ...
+};
+```
+
+يتم إنتاج عنصرين نائبين محسوبين:
+
+| المفتاح المحسوب | مشتق من | مثال |
+|-------------|-------------|---------|
+| `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` عبر جدول بحث `cidrToMask` | `255.255.255.0` |
+| `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` عبر `cidrToShort` | `192.0.2.0/24` |
+
+تدمج `getAllValues()` القيم المُدخلة من المستخدم مع القيم المحسوبة، مما يوفر خريطة كاملة للاستبدال.
+
+### إرسال الأحداث
+
+ترسل `emitChange()` حدث `placeholder-change` من نوع CustomEvent على `document` مع خريطة القيم الكاملة كـ `detail`:
+
+```ts
+export function emitChange(values: Record<string, string>) {
+  document.dispatchEvent(
+    new CustomEvent('placeholder-change', { detail: getAllValues(values) }),
+  );
+}
+```
+
+يقود هذا الحدث كلاً من تحديثات عناصر span في DOM وإعادة عرض مخططات Mermaid.
+
+## مكوّن نموذج React
+
+يوفر `src/components/PlaceholderForm.tsx` واجهة التحرير.
+
+- **الحالة**: `useState` مُهيّأ من `loadValues()`
+- **عند التحميل**: يستدعي `useEffect` الدالة `emitChange()` لتشغيل الاستبدال الأولي في DOM
+- **handleChange**: يحدّث حالة React، ويستدعي `saveValues()` و `emitChange()`
+- **handleReset**: يستدعي `clearValues()`، ويعيد تعيين الحالة إلى `getDefaults()`، ويرسل حدث التغيير
+- **العرض**: يتكرر عبر `FIELD_GROUPS`، ويعرض `<fieldset>` لكل مجموعة. كل مفتاح يحصل إما على `<input>` (نوع نص) أو `<select>` (نوع قائمة منسدلة)
+- **التخطيط**: يُغلَّف النموذج في عنصر `<details>`، مطوي افتراضياً
+
+## غلاف Astro
+
+يربط `src/components/PlaceholderFormWrapper.astro` مكوّن React بصفحة Astro:
+
+```astro
+<PlaceholderForm client:only="react" />
+
+<script>
+  import '../scripts/placeholder-dom.ts';
+</script>
+```
+
+يخبر `client:only="react"` إطار Astro بترطيب المكوّن على جانب العميل فقط (بدون عرض من جانب الخادم). يستورد وسم `<script>` مستعرض DOM بحيث يعمل في كل صفحة تتضمن هذا الغلاف.
+
+يحقن الغلاف أيضاً CSS عام لتنسيق النموذج (`.ph-form-wrapper`، `.ph-grid`، `.ph-value`، إلخ).
+
+## مستعرض DOM
+
+يتولى `src/scripts/placeholder-dom.ts` استبدال الرموز على جانب العميل.
+
+### المسح الأولي
+
+عند تحميل الصفحة، تعمل `init()`:
+
+1. تحدد `.sl-markdown-content` كجذر (تعود إلى `document.body` في حال عدم وجوده)
+2. تستدعي `walkTextNodes(root, values)` التي تستخدم `document.createTreeWalker` مع `NodeFilter.SHOW_TEXT`
+3. لكل عقدة نصية تطابق التعبير النمطي للرمز، تقسمها إلى جزء مستند يتكون من عقد نصية عادية وعناصر `<span data-ph="KEY" class="ph-value">`
+4. تستبدل العقدة النصية الأصلية بالجزء
+
+بعد المسح، يحتوي DOM على عناصر span بسمات `data-ph` بدلاً من الرموز الخام.
+
+### التحديثات اللاحقة
+
+عندما يرسل النموذج حدث `placeholder-change`، تعمل `updateSpans()`:
+
+```ts
+document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
+  const name = span.getAttribute('data-ph')!;
+  if (values[name] !== undefined) {
+    span.textContent = values[name];
+  }
+});
+```
+
+هذا يتجنب إعادة مسح الشجرة — فهو يحدّث محتوى النص في span مباشرة.
+
+### مستمعي الأحداث
+
+يسجّل السكريبت مستمعَين:
+
+| الحدث | المعالج | الغرض |
+|-------|---------|---------|
+| `placeholder-change` | `handleChange` | يحدّث عناصر span ويعيد عرض مخططات Mermaid |
+| `astro:page-load` | `init` | يعيد مسح DOM بعد التنقل على جانب العميل في Astro |
+
+## كيفية: إضافة عنصر نائب جديد
+
+1. **أضف إدخال JSON** في `src/data/placeholders.json`:
+   ```json
+   "MY_NEW_VALUE": {
+     "type": "text",
+     "default": "example",
+     "description": "Description shown in the form"
+   }
+   ```
+
+2. **أضف المفتاح إلى مجموعة حقول** في `src/lib/placeholder-store.ts`. إما أن تضيفه إلى مصفوفة `keys` لمجموعة موجودة أو أنشئ مجموعة جديدة في `FIELD_GROUPS`.
+
+3. **استخدم الرمز في المحتوى**: اكتب `xMY_NEW_VALUEx` في أي ملف `.mdx`. سيستبدله مستعرض DOM في وقت التشغيل.
+
+## كيفية: إضافة قيمة محسوبة
+
+القيم المحسوبة مشتقة من عناصر نائبة أخرى. لإضافة واحدة:
+
+1. أضف جدول بحث (إذا لزم الأمر) في `src/lib/placeholder-store.ts`، متبعاً نمط `cidrToMask`.
+
+2. وسّع `getComputedValues()` لتشمل المفتاح المشتق الجديد:
+   ```ts
+   export function getComputedValues(values: Record<string, string>): Record<string, string> {
+     // ... المنطق الحالي
+     return {
+       PROTECTED_MASK_V4: mask,
+       PROTECTED_PREFIX_V4: `${net}${short}`,
+       MY_COMPUTED: derivedValue,  // أضف هنا
+     };
+   }
+   ```
+
+3. استخدم `xMY_COMPUTEDx` في المحتوى مثل أي رمز آخر. لا تحتاج القيم المحسوبة إلى إدخال في `placeholders.json` أو مجموعة حقول — فهي غير مرئية للنموذج.

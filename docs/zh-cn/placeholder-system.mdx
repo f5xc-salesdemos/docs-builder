@@ -1,0 +1,212 @@
+---
+title: 占位符系统
+description: 令牌格式、状态管理、DOM 遍历器、计算值，以及如何添加新的占位符。
+sidebar:
+  order: 2
+i18n:
+  sourceHash: a92367b93514
+  translator: machine
+---
+
+占位符系统允许读者在整个文档中自定义 IP 地址、ASN 和其他与部署相关的特定值。作者在 Markdown 中编写令牌；浏览器在运行时将其替换为用户提供的值。
+
+## 令牌格式
+
+令牌遵循以下正则表达式模式：
+
+```
+x([A-Z][A-Z0-9_]+)x
+```
+
+令牌以小写 `x` 开头和结尾，中间包含一个大写标识符。例如，`xCUSTOMER_ASNx` 引用 `CUSTOMER_ASN` 占位符。
+
+该正则表达式定义在 `src/scripts/placeholder-dom.ts` 中：
+
+```ts
+const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
+```
+
+## 占位符定义
+
+所有占位符都在 `src/data/placeholders.json` 中声明。每个条目的结构如下：
+
+```json
+{
+  "CUSTOMER_ASN": {
+    "type": "text",
+    "default": "64496",
+    "description": "Your public ASN (registered with ARIN/RIR)"
+  }
+}
+```
+
+| 字段 | 是否必需 | 描述 |
+|-------|----------|-------------|
+| `type` | 是 | `"text"` 表示自由输入，`"dropdown"` 表示下拉选择菜单 |
+| `default` | 是 | 读者修改之前显示的初始值 |
+| `description` | 是 | 在表单中显示的标签 |
+| `options` | 仅下拉类型需要 | 允许值的数组 |
+
+## 状态管理
+
+`src/lib/placeholder-store.ts` 处理所有占位符状态。
+
+### 存储
+
+值通过 `localStorage` 持久化，使用键名 `f5xc-placeholders`。存储模块暴露四个函数：
+
+| 函数 | 用途 |
+|----------|---------|
+| `getDefaults()` | 返回每个占位符键到其 JSON 中 `default` 值的映射 |
+| `loadValues()` | 从 localStorage 读取，如果不存在则回退到 `getDefaults()` |
+| `saveValues(values)` | 将当前映射写入 localStorage |
+| `clearValues()` | 移除 localStorage 条目 |
+
+### 字段分组
+
+`FIELD_GROUPS` 将占位符键组织为带标签的分区，用于表单 UI：
+
+```ts
+export const FIELD_GROUPS: FieldGroup[] = [
+  { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
+  { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
+  { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
+  // ... 更多分组
+];
+```
+
+### 计算值
+
+某些值是从用户输入派生的，而非直接输入。`getComputedValues()` 通过查找表计算这些值：
+
+```ts
+const cidrToMask: Record<string, string> = {
+  '/24 (256 IPs)': '255.255.255.0',
+  '/23 (512 IPs)': '255.255.254.0',
+  // ...
+};
+```
+
+产生两个计算占位符：
+
+| 计算键 | 派生来源 | 示例 |
+|-------------|-------------|---------|
+| `PROTECTED_MASK_V4` | 通过 `cidrToMask` 查找从 `PROTECTED_CIDR_V4` 派生 | `255.255.255.0` |
+| `PROTECTED_PREFIX_V4` | 通过 `cidrToShort` 从 `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` 派生 | `192.0.2.0/24` |
+
+`getAllValues()` 将用户输入值与计算值合并，提供完整的替换映射。
+
+### 事件发射
+
+`emitChange()` 在 `document` 上派发一个 `placeholder-change` CustomEvent，将完整的值映射作为 `detail`：
+
+```ts
+export function emitChange(values: Record<string, string>) {
+  document.dispatchEvent(
+    new CustomEvent('placeholder-change', { detail: getAllValues(values) }),
+  );
+}
+```
+
+此事件驱动 DOM span 更新和 Mermaid 重新渲染。
+
+## React 表单组件
+
+`src/components/PlaceholderForm.tsx` 提供编辑 UI。
+
+- **状态**：`useState` 从 `loadValues()` 初始化
+- **挂载时**：`useEffect` 调用 `emitChange()` 触发初始 DOM 替换
+- **handleChange**：更新 React 状态，调用 `saveValues()` 和 `emitChange()`
+- **handleReset**：调用 `clearValues()`，将状态重置为 `getDefaults()`，发射变更事件
+- **渲染**：遍历 `FIELD_GROUPS`，为每个分组渲染一个 `<fieldset>`。每个键根据类型渲染为 `<input>`（文本类型）或 `<select>`（下拉类型）
+- **布局**：表单包裹在 `<details>` 元素中，默认折叠
+
+## Astro 包装器
+
+`src/components/PlaceholderFormWrapper.astro` 将 React 组件连接到 Astro 页面：
+
+```astro
+<PlaceholderForm client:only="react" />
+
+<script>
+  import '../scripts/placeholder-dom.ts';
+</script>
+```
+
+`client:only="react"` 告诉 Astro 仅在客户端水合该组件（不进行 SSR）。`<script>` 标签导入 DOM 遍历器，使其在包含此包装器的每个页面上运行。
+
+该包装器还注入了用于表单样式的全局 CSS（`.ph-form-wrapper`、`.ph-grid`、`.ph-value` 等）。
+
+## DOM 遍历器
+
+`src/scripts/placeholder-dom.ts` 处理客户端的令牌替换。
+
+### 初始遍历
+
+页面加载时，`init()` 运行：
+
+1. 选择 `.sl-markdown-content` 作为根节点（回退到 `document.body`）
+2. 调用 `walkTextNodes(root, values)`，使用 `document.createTreeWalker` 和 `NodeFilter.SHOW_TEXT`
+3. 对于每个匹配令牌正则的文本节点，将其拆分为一个包含纯文本节点和 `<span data-ph="KEY" class="ph-value">` 元素的文档片段
+4. 用该片段替换原始文本节点
+
+遍历完成后，DOM 中包含的是带有 `data-ph` 属性的 span，而非原始令牌。
+
+### 后续更新
+
+当表单发射 `placeholder-change` 事件时，`updateSpans()` 运行：
+
+```ts
+document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
+  const name = span.getAttribute('data-ph')!;
+  if (values[name] !== undefined) {
+    span.textContent = values[name];
+  }
+});
+```
+
+这避免了重新遍历树 — 它直接更新 span 的文本内容。
+
+### 事件监听器
+
+该脚本注册了两个监听器：
+
+| 事件 | 处理函数 | 用途 |
+|-------|---------|---------|
+| `placeholder-change` | `handleChange` | 更新 span 并重新渲染 Mermaid 图表 |
+| `astro:page-load` | `init` | 在 Astro 客户端导航后重新遍历 DOM |
+
+## 操作指南：添加新的占位符
+
+1. **在 `src/data/placeholders.json` 中添加 JSON 条目**：
+   ```json
+   "MY_NEW_VALUE": {
+     "type": "text",
+     "default": "example",
+     "description": "Description shown in the form"
+   }
+   ```
+
+2. **将键添加到 `src/lib/placeholder-store.ts` 中的字段分组**。将其添加到现有分组的 `keys` 数组中，或在 `FIELD_GROUPS` 中创建新的分组。
+
+3. **在内容中使用令牌**：在任何 `.mdx` 文件中编写 `xMY_NEW_VALUEx`。DOM 遍历器会在运行时替换它。
+
+## 操作指南：添加计算值
+
+计算值从其他占位符派生。添加方法如下：
+
+1. 如果需要，在 `src/lib/placeholder-store.ts` 中添加查找表，遵循 `cidrToMask` 的模式。
+
+2. 扩展 `getComputedValues()` 以包含新的派生键：
+   ```ts
+   export function getComputedValues(values: Record<string, string>): Record<string, string> {
+     // ... 现有逻辑
+     return {
+       PROTECTED_MASK_V4: mask,
+       PROTECTED_PREFIX_V4: `${net}${short}`,
+       MY_COMPUTED: derivedValue,  // 在此添加
+     };
+   }
+   ```
+
+3. 在内容中像使用其他令牌一样使用 `xMY_COMPUTEDx`。计算值不需要 `placeholders.json` 条目或字段分组 — 它们对表单不可见。

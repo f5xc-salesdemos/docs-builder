@@ -1,0 +1,132 @@
+---
+title: Mermaid Diagrams
+description: >-
+  Remark plugin, client-side CDN rendering, placeholder substitution in
+  diagrams, and error handling.
+sidebar:
+  order: 3
+i18n:
+  sourceHash: dbc6741c0e37
+  translator: machine
+---
+
+बिल्डर दो-चरणीय प्रोसेसिंग के साथ [Mermaid](https://mermaid.js.org/) डायग्राम का समर्थन करता है: बिल्ड समय पर एक remark प्लगइन मार्कअप तैयार करता है, और एक क्लाइंट-साइड रेंडरर SVG उत्पन्न करता है।
+
+## Remark प्लगइन
+
+remark-mermaid प्लगइन (`docs-theme` npm पैकेज द्वारा प्रदान किया गया) Astro बिल्ड के दौरान चलता है। यह `unist-util-visit` का उपयोग करके `lang === 'mermaid'` वाले fenced code ब्लॉक खोजता है और उन्हें HTML से बदल देता है:
+
+```js
+visit(tree, 'code', (node, index, parent) => {
+  if (node.lang !== 'mermaid' || index === undefined || !parent) return;
+
+  const escaped = node.value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+  parent.children[index] = {
+    type: 'html',
+    value: `<div class="mermaid-container" data-mermaid-src="${escaped}">
+              <pre class="mermaid">${node.value}</pre>
+            </div>`,
+  };
+});
+```
+
+मुख्य विवरण:
+
+| पहलू | मान |
+|--------|-------|
+| मिलान किया गया नोड प्रकार | `code` नोड जहाँ `lang === 'mermaid'` |
+| HTML entity एस्केपिंग | `&`, `<`, `>`, `"` — `data-mermaid-src` में attribute injection को रोकता है |
+| आउटपुट संरचना | `<div class="mermaid-container">` जिसमें `data-mermaid-src` attribute में एस्केप किया गया सोर्स होता है |
+| फ़ॉलबैक सामग्री | `<pre class="mermaid">` जिसमें कच्चा सोर्स होता है (JS के रेंडर करने तक दिखाई देता है) |
+
+## क्लाइंट-साइड रेंडरिंग
+
+`src/scripts/placeholder-dom.ts` में `renderMermaidDiagrams()` फ़ंक्शन ब्राउज़र में SVG जनरेशन को संभालता है।
+
+### Mermaid इम्पोर्ट
+
+Mermaid को CDN से माँग पर लोड किया जाता है — यह बंडल नहीं किया जाता:
+
+```ts
+const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default;
+```
+
+### इनिशियलाइज़ेशन
+
+```ts
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  securityLevel: 'loose',
+  themeVariables: {
+    primaryColor: '#ffffff',
+    primaryBorderColor: '#cccccc',
+    background: '#ffffff',
+    mainBkg: '#ffffff',
+    secondBkg: '#ffffff',
+    tertiaryColor: '#ffffff',
+  },
+});
+```
+
+`startOnLoad: false` Mermaid को पेज को ऑटो-स्कैन करने से रोकता है। `securityLevel: 'loose'` डायग्राम में क्लिक इवेंट और लिंक की अनुमति देता है।
+
+### रेंडर लूप
+
+प्रत्येक `.mermaid-container` एलिमेंट के लिए:
+
+1. `data-mermaid-src` से कच्चा डायग्राम सोर्स पढ़ें
+2. सोर्स पर प्लेसहोल्डर प्रतिस्थापन चलाएँ (नीचे देखें)
+3. कंटेनर साफ़ करें और कोई भी `data-processed` attribute हटाएँ
+4. SVG उत्पन्न करने के लिए एक रैंडम ID के साथ `mermaid.render()` कॉल करें
+5. रेंडर किए गए `<svg>` एलिमेंट पर `backgroundColor: 'white'` सेट करें
+
+## डायग्राम में प्लेसहोल्डर प्रतिस्थापन
+
+रेंडरिंग से पहले, डायग्राम सोर्स उसी `substituteText()` फ़ंक्शन से गुज़रता है जिसका उपयोग DOM वॉकर द्वारा किया जाता है (वॉकर तंत्र के लिए [प्लेसहोल्डर सिस्टम](../placeholder-system/) देखें):
+
+```ts
+const template = container.getAttribute('data-mermaid-src') || '';
+const substituted = substituteText(template, values);
+```
+
+इसका अर्थ है कि `xCUSTOMER_ASNx` जैसे प्लेसहोल्डर टोकन Mermaid डायग्राम परिभाषाओं के अंदर काम करते हैं। जब कोई उपयोगकर्ता फ़ॉर्म में कोई मान बदलता है, तो `placeholder-change` इवेंट अपडेटेड मानों के साथ सभी डायग्राम का पूर्ण री-रेंडर ट्रिगर करता है।
+
+## त्रुटि हैंडलिंग
+
+यदि `mermaid.render()` त्रुटि फेंकता है (उदाहरण के लिए, डायग्राम सोर्स में सिंटैक्स त्रुटि के कारण), तो catch ब्लॉक सीधे कंटेनर में त्रुटि प्रदर्शित करता है:
+
+```ts
+} catch (e) {
+  container.textContent = `Diagram error: ${e}`;
+}
+```
+
+यह पेज के बाकी हिस्से को तोड़े बिना ऑथरिंग त्रुटियों को दृश्यमान बनाता है।
+
+## री-रेंडरिंग
+
+डायग्राम दो स्थितियों में री-रेंडर होते हैं:
+
+| ट्रिगर | इवेंट | क्या होता है |
+|---------|-------|-------------|
+| प्लेसहोल्डर मान बदलता है | `placeholder-change` | `handleChange()` नए मानों के साथ `renderMermaidDiagrams()` कॉल करता है |
+| Astro पेज नेविगेशन | `astro:page-load` | `init()` नए पेज के लिए `renderMermaidDiagrams()` कॉल करता है |
+
+## ऑथरिंग सिंटैक्स
+
+`mermaid` लैंग्वेज टैग के साथ एक मानक fenced code ब्लॉक लिखें:
+
+````markdown
+```mermaid
+flowchart LR
+    A[Customer ASN: xCUSTOMER_ASNx] --> B[F5 XC ASN: xF5_XC_ASNx]
+```
+````
+
+remark प्लगइन इसे बिल्ड समय पर एक कंटेनर div में बदलता है। क्लाइंट इसे प्लेसहोल्डर मानों को प्रतिस्थापित करके SVG के रूप में रेंडर करता है।

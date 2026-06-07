@@ -1,0 +1,144 @@
+---
+title: CI/CD 및 거버넌스
+description: 'GitHub Actions 워크플로우, 템플릿 동기화, 시크릿, 브랜치 보호.'
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 3b4552f7ab42
+  translator: machine
+---
+
+이 저장소는 네 개의 GitHub Actions 워크플로우와 거버넌스를 위한 중앙 집중식 템플릿 시스템을 사용합니다.
+
+## 워크플로우
+
+| 워크플로우 | 파일 | 트리거 | 목적 |
+|----------|------|---------|---------|
+| GitHub Pages 배포 | `github-pages-deploy.yml` | `main`으로 Push (`docs/**`), 수동 디스패치 | 문서 사이트를 빌드하고 GitHub Pages에 배포 |
+| Docker 이미지 빌드 및 퍼블리시 | `build-image.yml` | `main`으로 Push (`docker/**`, `package*.json`), 일일 cron, `repository_dispatch` | Docker 이미지를 빌드하고 GHCR에 푸시하며 다운스트림 저장소에 리빌드를 디스패치 |
+| 연결된 이슈 필수 | `require-linked-issue.yml` | Pull Request 이벤트 | GitHub 이슈를 참조하지 않는 PR을 차단 |
+| 저장소 설정 적용 | `enforce-repo-settings.yml` | 6시간마다, 설정 구성 Push 시, 수동 디스패치 | 템플릿에서 표준화된 저장소 설정을 적용 |
+
+### GitHub Pages 배포
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+```
+
+템플릿 저장소의 재사용 가능한 워크플로우에 위임합니다:
+
+```yaml
+jobs:
+  docs:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+```
+
+권한: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. 오래된 배포를 방지하기 위해 `cancel-in-progress: true`로 설정된 `pages` 동시성 그룹을 사용합니다.
+
+`docs/` 하위 파일이 변경될 때만 Push에 의해 트리거됩니다. `workflow_dispatch`를 통해 수동으로도 트리거할 수 있으며, 이는 `build-image.yml`의 디스패치 작업이 다운스트림 리빌드를 트리거하는 방식이기도 합니다.
+
+### Docker 이미지 빌드 및 퍼블리시
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    - cron: '0 6 * * *'
+  repository_dispatch:
+    types: [rebuild-image]
+```
+
+단계:
+1. 코드 체크아웃
+2. `docker/login-action`을 사용하여 `ghcr.io`에 로그인
+3. `docker/build-push-action`을 사용하여 컨텍스트 `.`와 파일 `docker/Dockerfile`로 빌드 및 푸시
+4. 태그: `ghcr.io/<owner>/<repo>:latest` 및 `ghcr.io/<owner>/<repo>:<sha>`
+
+빌드가 성공하면, **디스패치** 작업이 템플릿 저장소의 `downstream-repos.json` 구성에 나열된 모든 다운스트림 저장소에서 `workflow_dispatch`를 통해 `github-pages-deploy.yml`을 트리거합니다. 이를 통해 모든 콘텐츠 저장소가 업데이트된 빌더 이미지로 문서를 리빌드합니다.
+
+일일 cron은 코드 변경 없이도 이미지를 최신 상태로 유지합니다(의존성 업데이트 반영). `repository_dispatch` 이벤트를 통해 외부 시스템이 리빌드를 트리거할 수 있습니다.
+
+`docker/` 파일 또는 `package*.json`이 변경될 때만 Push에 의해 트리거됩니다. 문서만 변경된 경우 이미지 리빌드가 트리거되지 않습니다.
+
+### 연결된 이슈 필수
+
+```yaml
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+```
+
+`nearform-actions/github-action-check-linked-issues@v1`을 사용하여 모든 PR이 GitHub 이슈를 참조하도록 강제합니다(예: 설명에 `Closes #42`). Dependabot PR은 다음을 통해 제외됩니다:
+
+```yaml
+exclude-branches: "dependabot/**"
+```
+
+검사가 실패하면 기여자에게 예상되는 형식을 알려주는 사용자 정의 메시지가 표시됩니다. 전체 기여자 워크플로우는 [CONTRIBUTING.md](../CONTRIBUTING.md)를 참조하세요.
+
+### 저장소 설정 적용
+
+```yaml
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/config/repo-settings.json'
+  workflow_dispatch:
+```
+
+템플릿 저장소의 재사용 가능한 워크플로우에 위임합니다:
+
+```yaml
+jobs:
+  enforce:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    secrets:
+      repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
+```
+
+6시간마다 그리고 설정 구성 파일이 변경될 때 실행됩니다. `.github/config/repo-settings.json`에서 브랜치 보호 규칙, 병합 설정 및 기타 저장소 구성을 적용합니다.
+
+## 거버넌스 모델
+
+### 중앙 집중식 템플릿
+
+`f5xc-salesdemos/docs-control` 저장소는 다음에 대한 단일 진실 공급원(Single Source of Truth)입니다:
+
+- 재사용 가능한 워크플로우 정의(문서 배포, 저장소 설정 적용)
+- 조직 내 모든 저장소에 동기화되는 관리 파일
+- 표준 구성 및 브랜치 보호 규칙
+
+이 빌더와 모든 콘텐츠 저장소는 템플릿에서 CI/CD 동작을 상속받습니다.
+
+### 관리 파일 동기화
+
+템플릿 저장소는 관리 파일(워크플로우 정의 및 구성 파일 등)을 다운스트림 저장소에 푸시할 수 있습니다. 이를 통해 수동 업데이트 없이 모든 저장소를 일관되게 유지합니다. 동기화는 템플릿 저장소의 별도 워크플로우를 통해 실행됩니다.
+
+### 브랜치 보호
+
+저장소 설정 적용 워크플로우는 다음을 포함하여 템플릿의 브랜치 보호 규칙을 적용합니다:
+
+- 병합 전 필수 상태 검사
+- 연결된 이슈 검사 필수
+- 스쿼시 병합 선호
+- 병합 후 헤드 브랜치 자동 삭제
+
+## 시크릿
+
+| 시크릿 | 소스 | 목적 |
+|--------|--------|---------|
+| `GITHUB_TOKEN` | 자동 (GitHub) | 대부분의 워크플로우에서 체크아웃, 패키지 퍼블리싱 및 API 호출에 사용 |
+| `REPO_ADMIN_TOKEN` | 수동 (저장소 시크릿) | 브랜치 보호, 저장소 설정 수정 및 다운스트림 워크플로우 트리거를 위해 저장소 설정 적용 및 디스패치 작업에 필요 (admin 스코프 필요) |

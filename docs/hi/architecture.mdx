@@ -1,0 +1,114 @@
+---
+title: आर्किटेक्चर
+description: >-
+  डॉक्स बिल्डर के लिए सिस्टम डिज़ाइन, डायरेक्टरी लेआउट, थीम सिस्टम और बिल्ड
+  पाइपलाइन।
+sidebar:
+  order: 5
+i18n:
+  sourceHash: a16b586bcbe1
+  translator: machine
+---
+
+## अवलोकन
+
+डॉक्स बिल्डर एक कंटेनराइज़्ड [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) सिस्टम है। कंटेंट रिपॉज़ Markdown/MDX फ़ाइलें प्रदान करते हैं; बिल्डर फ्रेमवर्क, थीम और बिल्ड लॉजिक प्रदान करता है। ये दोनों भाग बिल्ड समय पर एक Docker कंटेनर के अंदर मिलते हैं।
+
+## कंटेंट इंजेक्शन मॉडल
+
+कंटेंट रिपॉज़ अपने डॉक्यूमेंटेशन को एक `docs/` डायरेक्टरी में रखते हैं। बिल्ड समय पर कंटेनर उन फ़ाइलों को `src/content/docs/` में कॉपी करता है, जहाँ Astro का कंटेंट कलेक्शन उन्हें उठा लेता है।
+
+```
+content-repo/
+  docs/           ← कंटेंट टीमों द्वारा लिखा गया
+    index.mdx
+    guide.mdx
+
+docs-builder/
+  src/content/docs/ ← विश्राम स्थिति में खाली (.gitkeep)
+```
+
+एंट्रीपॉइंट स्क्रिप्ट (`docker/entrypoint.sh`) कॉपी करती है:
+
+```sh
+cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+```
+
+इसका मतलब है कि बिल्डर रिपो स्वयं एक खाली `src/content/docs/` डायरेक्टरी के साथ शिप होता है। कंटेंट केवल बिल्ड समय पर प्रकट होता है।
+
+## थीम सिस्टम
+
+Starlight थीम एक अलग npm पैकेज के रूप में प्रकाशित की जाती है। `package.json` एक npm उपनाम का उपयोग करके एक छोटे नाम को स्कोप्ड रजिस्ट्री पैकेज से मैप करता है:
+
+```json
+"@f5xc-salesdemos/docs-theme": "^1.29.0"
+```
+
+थीम पैकेज `astro.config.mjs` का स्वामी है। बिल्ड समय पर एंट्रीपॉइंट इसे प्रोजेक्ट रूट में कॉपी करता है:
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+```
+
+यह कॉन्फ़िगरेशन को केंद्रीकृत रखता है — कंटेंट रिपॉज़ और बिल्डर स्वयं अपना Astro कॉन्फ़िग मेंटेन नहीं करते।
+
+## सोर्स डायरेक्टरी लेआउट
+
+```
+src/
+  components/
+    PlaceholderForm.tsx          # प्लेसहोल्डर वैल्यू एडिट करने के लिए React फॉर्म
+    PlaceholderFormWrapper.astro # Astro रैपर, DOM स्क्रिप्ट और ग्लोबल CSS लोड करता है
+  content/
+    docs/                        # इंजेक्ट किए गए कंटेंट के लिए माउंट पॉइंट
+  content.config.ts              # Starlight कंटेंट कलेक्शन डेफिनिशन
+  data/
+    placeholders.json            # प्लेसहोल्डर टोकन डेफिनिशन
+  lib/
+    placeholder-store.ts         # स्टेट मैनेजमेंट: लोड, सेव, कंप्यूट, एमिट
+  scripts/
+    placeholder-dom.ts           # क्लाइंट-साइड DOM वॉकर और Mermaid रेंडरर
+```
+
+## कंटेंट कलेक्शन
+
+`src/content.config.ts` Starlight के लोडर और स्कीमा का उपयोग करके एक एकल `docs` कलेक्शन परिभाषित करता है:
+
+```ts
+import { defineCollection } from 'astro:content';
+import { docsLoader } from '@astrojs/starlight/loaders';
+import { docsSchema } from '@astrojs/starlight/schema';
+
+export const collections = {
+  docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
+};
+```
+
+`src/content/docs/` में रखी गई कोई भी `.md` या `.mdx` फ़ाइल बिल्ट साइट में एक पेज बन जाती है।
+
+## बिल्ड प्रवाह
+
+निम्नलिखित डायग्राम Docker कंटेनर चलने पर एंड-टू-एंड बिल्ड पाइपलाइन दिखाता है:
+
+```mermaid
+flowchart LR
+    A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
+    B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    E -->|cp astro.config| F[astro.config.mjs]
+    C --> G[astro build]
+    F --> G
+    G --> H[dist/<br/>static HTML]
+    H -->|cp| I[/output]
+```
+
+## बिल्ड-टाइम बनाम क्लाइंट-टाइम प्रोसेसिंग
+
+| विषय | कब | कैसे |
+|---------|------|-----|
+| MDX → HTML | बिल्ड समय | Astro कंपाइलर |
+| Mermaid कोड ब्लॉक → कंटेनर divs | बिल्ड समय | `remark-mermaid.mjs` प्लगइन (`docs-theme` से) |
+| प्लेसहोल्डर टोकन → इंटरैक्टिव spans | क्लाइंट समय | `placeholder-dom.ts` TreeWalker |
+| Mermaid SVG रेंडरिंग | क्लाइंट समय | `placeholder-dom.ts` में `mermaid` CDN इम्पोर्ट |
+| प्लेसहोल्डर फॉर्म स्टेट | क्लाइंट समय | `placeholder-store.ts` + localStorage |
+| Astro पेज ट्रांज़िशन | क्लाइंट समय | `astro:page-load` इवेंट लिसनर |

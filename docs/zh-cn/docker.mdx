@@ -1,0 +1,189 @@
+---
+title: Docker 构建
+description: Dockerfile 层、入口点编排、环境变量和本地使用。
+sidebar:
+  order: 4
+i18n:
+  sourceHash: f8453f94aa45
+  translator: machine
+---
+
+构建器以 Docker 镜像的形式发布。内容仓库通过运行它来生成静态 HTML，无需在本地安装 Node.js 或 Astro。
+
+## Dockerfile
+
+`docker/Dockerfile` 基于 `node:24-alpine` 使用多步骤构建：
+
+```dockerfile
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+# Install deps (cached layer)
+COPY package*.json ./
+RUN npm ci
+
+# Copy framework code
+COPY . .
+
+# Remove placeholder content
+RUN rm -rf src/content/docs/*
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+```
+
+### 层策略
+
+| 层 | 内容 | 为何单独缓存 |
+|-------|------|----------------------|
+| 1 | `COPY package*.json` + `npm ci` | 依赖变更不频繁；缓存此层可避免每次构建都重新下载 |
+| 2 | `COPY . .` | 框架源代码 |
+| 3 | `rm -rf src/content/docs/*` | 清除所有占位内容，确保只显示注入的内容 |
+| 4 | `COPY entrypoint.sh` | 构建编排脚本 |
+
+## 入口点
+
+`docker/entrypoint.sh` 在容器每次启动时运行。它按顺序执行以下步骤：
+
+### 步骤 1：更新依赖
+
+```sh
+npm install
+npm update
+```
+
+确保主题包和所有依赖都处于最新的兼容版本。
+
+### 步骤 2：复制主题配置
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+```
+
+从主题包中复制 `astro.config.mjs` 和 `content.config.ts`。主题是 Astro 配置的唯一事实来源——请参阅[架构](../architecture/)了解主题系统设计。
+
+### 步骤 3：注入内容
+
+```sh
+if [ -d "$CONTENT_DIR" ]; then
+  cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+else
+  echo "ERROR: No content found at $CONTENT_DIR"
+  exit 1
+fi
+```
+
+将挂载的内容复制到 Astro 的内容集合目录中。如果内容目录不存在，则以错误退出。
+
+### 步骤 4：提取标题
+
+```sh
+if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
+  DOCS_TITLE=$(grep -m1 '^title:' /app/src/content/docs/index.mdx | sed 's/title: *["]*//;s/["]*$//')
+  export DOCS_TITLE
+fi
+```
+
+如果 `DOCS_TITLE` 未通过环境变量设置，则从 `index.mdx` 的 `title:` frontmatter 字段中提取。
+
+### 步骤 5：提取基础路径
+
+```sh
+if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
+  DOCS_BASE="/${GITHUB_REPOSITORY#*/}"
+  export DOCS_BASE
+fi
+```
+
+从 GitHub 仓库名称派生站点基础路径（例如，`owner/my-docs` 变为 `/my-docs`）。
+
+### 步骤 6：构建
+
+```sh
+npm run build
+```
+
+运行 `astro build`，在 `/app/dist/` 中生成静态输出。
+
+### 步骤 7：复制输出
+
+```sh
+if [ -d "$OUTPUT_DIR" ]; then
+  cp -r /app/dist/* "$OUTPUT_DIR"/
+fi
+```
+
+将构建好的站点复制到输出挂载点。
+
+## 环境变量
+
+| 变量 | 默认值 | 描述 |
+|----------|---------|-------------|
+| `CONTENT_DIR` | `/content/docs` | 挂载的内容目录路径 |
+| `OUTPUT_DIR` | `/output` | 构建好的站点复制到的路径 |
+| `DOCS_TITLE` | *（从 index.mdx 提取）* | 传递给 Astro 配置的站点标题 |
+| `DOCS_DESCRIPTION` | *（从 index.mdx 提取）* | 来自 frontmatter 的站点描述 |
+| `DOCS_BASE` | *（从 `GITHUB_REPOSITORY` 派生）* | 站点的基础路径（例如 `/my-docs`） |
+| `DOCS_SITE` | *（从 `GITHUB_REPOSITORY_OWNER` 派生）* | 传递给 Astro 配置的站点 URL（例如 `https://<owner>.github.io`） |
+| `GITHUB_REPOSITORY` | *（由 GitHub Actions 设置）* | 用于派生 `DOCS_BASE` 的 `owner/repo` 字符串 |
+| `GENERATE_PDF` | `false` | 在构建后启用 PDF 生成 |
+| `PDF_FILENAME` | `docs` | 生成的 PDF 的输出文件名 |
+| `LLMS_OPTIONAL_LINKS` | `[]` | 用于 `llms.txt` Optional 部分的子站点 URL JSON 数组 |
+
+## 本地使用
+
+使用 Docker 在本地构建文档：
+
+```sh
+docker run --rm \
+  -v "$(pwd)/docs:/content/docs" \
+  -v "$(pwd)/output:/output" \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+这会将本地 `docs/` 目录作为内容挂载，并将构建好的站点写入 `output/`。
+
+对于需要实时开发服务器工作流的内容作者，请参阅[内容作者本地预览](../content-authors/)。
+
+## 开发者：本地开发服务器
+
+在构建器本身（组件、插件、主题集成）上进行开发时，您可以直接运行 Astro 的开发服务器而无需 Docker：
+
+```sh
+npm ci
+cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+# Copy some test content into the content collection
+cp -r /path/to/test-content/* src/content/docs/
+DOCS_TITLE="Dev Test" npx astro dev --host
+```
+
+打开 `http://localhost:4321`。热模块替换（HMR）适用于组件和插件的更改。
+
+:::note
+`astro.config.mjs` 和 `content.config.ts` 来自主题包，不在本仓库中进行版本控制。在运行开发服务器之前，您必须从 `node_modules` 中复制它们。入口点在 Docker 构建中会自动处理此操作。
+:::
+
+:::note
+`src/content/docs/` 在镜像构建时被清空并已加入 gitignore。请手动将测试内容放置在此处——它不会被提交。
+:::
+
+## 镜像仓库
+
+该镜像发布到 GitHub Container Registry：
+
+```
+ghcr.io/f5xc-salesdemos/docs-builder
+```
+
+每次构建都会推送两个标签：
+
+| 标签 | 描述 |
+|-----|-------------|
+| `latest` | 来自 `main` 分支的最新构建 |
+| `<sha>` | 完整的 Git 提交 SHA，用于可复现构建 |
+
+请参阅 [CI/CD 与治理](../ci-cd/)了解构建和发布镜像的工作流。

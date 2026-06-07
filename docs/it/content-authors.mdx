@@ -1,0 +1,63 @@
+---
+title: Anteprima locale per autori di contenuti
+description: >-
+  Visualizza in anteprima la tua documentazione in locale con un singolo comando
+  Docker.
+sidebar:
+  order: 7
+i18n:
+  sourceHash: d5ec9a607f67
+  translator: machine
+---
+
+Visualizza in anteprima la tua documentazione in locale prima di eseguire il push delle modifiche. Tutto ciò che ti serve è Docker e una directory `docs/`.
+
+## Prerequisiti
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installato e in esecuzione
+- Il tuo repository di contenuti clonato in locale con una directory `docs/` contenente almeno `index.mdx`
+
+## Avviare il server di sviluppo
+
+Dalla radice del tuo repository di contenuti, esegui:
+
+```sh
+docker run --rm -it \
+  -v "$(pwd)/docs:/content/docs" \
+  -p 4321:4321 \
+  -e MODE=dev \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+Apri **http://localhost:4321** una volta che il server è avviato.
+
+:::note
+Le modifiche ai file sul tuo host richiedono il riavvio del container. Fermalo con `Ctrl+C` e riesegui il comando per applicare le modifiche.
+:::
+
+## Immagini e risorse statiche
+
+Posiziona le immagini in una sottodirectory come `docs/images/`. Il container le rileva automaticamente — non sono necessari mount di volumi aggiuntivi.
+
+Fai riferimento ad esse nel tuo MDX con un percorso relativo alla radice:
+
+```mdx
+![Architecture diagram](/images/architecture.png)
+```
+
+## Risoluzione dei problemi
+
+**Porta già in uso** — Mappa su una porta host diversa: `-p 8080:4321`, quindi apri `http://localhost:8080`.
+
+**Contenuto non visualizzato** — Verifica che `docs/index.mdx` esista. Controlla l'output del container per un messaggio `ERROR: No content found`.
+
+**Immagine obsoleta** — Scarica l'ultima versione:
+
+```sh
+docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+## Ulteriori letture
+
+- [Docker Build](../docker/) — Dettagli sull'immagine, variabili d'ambiente e build di produzione
+- [Architecture](../architecture/) — Modello di iniezione dei contenuti e progettazione del sistema di temi
