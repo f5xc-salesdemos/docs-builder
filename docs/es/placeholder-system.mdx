@@ -1,0 +1,214 @@
+---
+title: Sistema de Marcadores de Posición
+description: >-
+  Formato de tokens, gestión de estado, recorrido del DOM, valores calculados y
+  cómo añadir nuevos marcadores de posición.
+sidebar:
+  order: 2
+i18n:
+  sourceHash: a92367b93514
+  translator: machine
+---
+
+El sistema de marcadores de posición permite a los lectores personalizar direcciones IP, ASNs y otros valores específicos de implementación a lo largo de la documentación. Los autores escriben tokens en su Markdown; el navegador los reemplaza con valores proporcionados por el usuario en tiempo de ejecución.
+
+## Formato de Token
+
+Los tokens siguen el patrón de expresión regular:
+
+```
+x([A-Z][A-Z0-9_]+)x
+```
+
+Un token comienza y termina con una `x` minúscula y contiene un identificador en mayúsculas. Por ejemplo, `xCUSTOMER_ASNx` hace referencia al marcador de posición `CUSTOMER_ASN`.
+
+La expresión regular está definida en `src/scripts/placeholder-dom.ts`:
+
+```ts
+const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
+```
+
+## Definiciones de Marcadores de Posición
+
+Todos los marcadores de posición se declaran en `src/data/placeholders.json`. Cada entrada tiene esta estructura:
+
+```json
+{
+  "CUSTOMER_ASN": {
+    "type": "text",
+    "default": "64496",
+    "description": "Your public ASN (registered with ARIN/RIR)"
+  }
+}
+```
+
+| Campo | Requerido | Descripción |
+|-------|-----------|-------------|
+| `type` | sí | `"text"` para entrada de texto libre, `"dropdown"` para menús desplegables |
+| `default` | sí | Valor inicial mostrado antes de que el lector realice cambios |
+| `description` | sí | Etiqueta mostrada en el formulario |
+| `options` | solo para dropdown | Array de valores permitidos |
+
+## Gestión de Estado
+
+`src/lib/placeholder-store.ts` gestiona todo el estado de los marcadores de posición.
+
+### Almacenamiento
+
+Los valores se persisten en `localStorage` bajo la clave `f5xc-placeholders`. El almacén expone cuatro funciones:
+
+| Función | Propósito |
+|---------|-----------|
+| `getDefaults()` | Devuelve un mapa de cada clave de marcador de posición a su valor `default` del JSON |
+| `loadValues()` | Lee de localStorage, recurre a `getDefaults()` como respaldo |
+| `saveValues(values)` | Escribe el mapa actual en localStorage |
+| `clearValues()` | Elimina la entrada de localStorage |
+
+### Grupos de Campos
+
+`FIELD_GROUPS` organiza las claves de marcadores de posición en secciones etiquetadas para la interfaz del formulario:
+
+```ts
+export const FIELD_GROUPS: FieldGroup[] = [
+  { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
+  { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
+  { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
+  // ... más grupos
+];
+```
+
+### Valores Calculados
+
+Algunos valores se derivan de la entrada del usuario en lugar de ingresarse directamente. `getComputedValues()` los calcula a partir de tablas de búsqueda:
+
+```ts
+const cidrToMask: Record<string, string> = {
+  '/24 (256 IPs)': '255.255.255.0',
+  '/23 (512 IPs)': '255.255.254.0',
+  // ...
+};
+```
+
+Se producen dos marcadores de posición calculados:
+
+| Clave Calculada | Derivado De | Ejemplo |
+|-----------------|-------------|---------|
+| `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` mediante búsqueda en `cidrToMask` | `255.255.255.0` |
+| `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` mediante `cidrToShort` | `192.0.2.0/24` |
+
+`getAllValues()` combina los valores ingresados por el usuario con los valores calculados, proporcionando un mapa completo para la sustitución.
+
+### Emisión de Eventos
+
+`emitChange()` despacha un CustomEvent `placeholder-change` en `document` con el mapa completo de valores como `detail`:
+
+```ts
+export function emitChange(values: Record<string, string>) {
+  document.dispatchEvent(
+    new CustomEvent('placeholder-change', { detail: getAllValues(values) }),
+  );
+}
+```
+
+Este evento impulsa tanto las actualizaciones de los spans del DOM como el re-renderizado de Mermaid.
+
+## Componente React del Formulario
+
+`src/components/PlaceholderForm.tsx` proporciona la interfaz de edición.
+
+- **Estado**: `useState` inicializado desde `loadValues()`
+- **Al montar**: `useEffect` llama a `emitChange()` para activar la sustitución inicial del DOM
+- **handleChange**: Actualiza el estado de React, llama a `saveValues()` y `emitChange()`
+- **handleReset**: Llama a `clearValues()`, restablece el estado a `getDefaults()`, emite el cambio
+- **Renderizado**: Itera `FIELD_GROUPS`, renderizando un `<fieldset>` por grupo. Cada clave obtiene un `<input>` (tipo texto) o un `<select>` (tipo desplegable)
+- **Diseño**: El formulario está envuelto en un elemento `<details>`, colapsado por defecto
+
+## Envoltorio Astro
+
+`src/components/PlaceholderFormWrapper.astro` conecta el componente React con la página Astro:
+
+```astro
+<PlaceholderForm client:only="react" />
+
+<script>
+  import '../scripts/placeholder-dom.ts';
+</script>
+```
+
+`client:only="react"` le indica a Astro que hidrate el componente puramente en el cliente (sin SSR). La etiqueta `<script>` importa el recorredor del DOM para que se ejecute en cada página que incluya este envoltorio.
+
+El envoltorio también inyecta CSS global para el estilo del formulario (`.ph-form-wrapper`, `.ph-grid`, `.ph-value`, etc.).
+
+## Recorredor del DOM
+
+`src/scripts/placeholder-dom.ts` gestiona el reemplazo de tokens del lado del cliente.
+
+### Recorrido Inicial
+
+Al cargar la página, `init()` se ejecuta:
+
+1. Selecciona `.sl-markdown-content` como raíz (recurre a `document.body` como respaldo)
+2. Llama a `walkTextNodes(root, values)` que utiliza `document.createTreeWalker` con `NodeFilter.SHOW_TEXT`
+3. Para cada nodo de texto que coincide con la expresión regular del token, lo divide en un fragmento de documento con nodos de texto plano y elementos `<span data-ph="KEY" class="ph-value">`
+4. Reemplaza el nodo de texto original con el fragmento
+
+Después del recorrido, el DOM contiene spans con atributos `data-ph` en lugar de tokens sin procesar.
+
+### Actualizaciones Posteriores
+
+Cuando el formulario emite un evento `placeholder-change`, `updateSpans()` se ejecuta:
+
+```ts
+document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
+  const name = span.getAttribute('data-ph')!;
+  if (values[name] !== undefined) {
+    span.textContent = values[name];
+  }
+});
+```
+
+Esto evita recorrer el árbol nuevamente — actualiza directamente el contenido de texto del span.
+
+### Escuchadores de Eventos
+
+El script registra dos escuchadores:
+
+| Evento | Manejador | Propósito |
+|--------|-----------|-----------|
+| `placeholder-change` | `handleChange` | Actualiza los spans y re-renderiza los diagramas Mermaid |
+| `astro:page-load` | `init` | Recorre nuevamente el DOM después de la navegación del lado del cliente de Astro |
+
+## Cómo: Añadir un Nuevo Marcador de Posición
+
+1. **Añadir la entrada JSON** en `src/data/placeholders.json`:
+   ```json
+   "MY_NEW_VALUE": {
+     "type": "text",
+     "default": "example",
+     "description": "Description shown in the form"
+   }
+   ```
+
+2. **Añadir la clave a un grupo de campos** en `src/lib/placeholder-store.ts`. Ya sea añadiéndola al array `keys` de un grupo existente o creando un nuevo grupo en `FIELD_GROUPS`.
+
+3. **Usar el token en el contenido**: Escriba `xMY_NEW_VALUEx` en cualquier archivo `.mdx`. El recorredor del DOM lo reemplazará en tiempo de ejecución.
+
+## Cómo: Añadir un Valor Calculado
+
+Los valores calculados se derivan de otros marcadores de posición. Para añadir uno:
+
+1. Añada una tabla de búsqueda (si es necesario) en `src/lib/placeholder-store.ts`, siguiendo el patrón de `cidrToMask`.
+
+2. Extienda `getComputedValues()` para incluir la nueva clave derivada:
+   ```ts
+   export function getComputedValues(values: Record<string, string>): Record<string, string> {
+     // ... lógica existente
+     return {
+       PROTECTED_MASK_V4: mask,
+       PROTECTED_PREFIX_V4: `${net}${short}`,
+       MY_COMPUTED: derivedValue,  // añadir aquí
+     };
+   }
+   ```
+
+3. Use `xMY_COMPUTEDx` en el contenido como cualquier otro token. Los valores calculados no necesitan una entrada en `placeholders.json` ni un grupo de campos — son invisibles para el formulario.

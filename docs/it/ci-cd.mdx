@@ -1,0 +1,146 @@
+---
+title: CI/CD e Governance
+description: >-
+  Workflow GitHub Actions, sincronizzazione dei template, segreti e protezione
+  dei branch.
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 3b4552f7ab42
+  translator: machine
+---
+
+Il repository utilizza quattro workflow GitHub Actions e un sistema centralizzato di template per la governance.
+
+## Workflow
+
+| Workflow | File | Trigger | Scopo |
+|----------|------|---------|-------|
+| GitHub Pages Deploy | `github-pages-deploy.yml` | Push su `main` (`docs/**`), dispatch manuale | Compila e pubblica il sito di documentazione su GitHub Pages |
+| Build and Publish Docker Image | `build-image.yml` | Push su `main` (`docker/**`, `package*.json`), cron giornaliero, `repository_dispatch` | Compila l'immagine Docker, la pubblica su GHCR e invia dispatch di rebuild ai repository downstream |
+| Require Linked Issue | `require-linked-issue.yml` | Eventi pull request | Blocca le PR che non fanno riferimento a una issue GitHub |
+| Enforce Repository Settings | `enforce-repo-settings.yml` | Ogni 6 ore, push sulla configurazione delle impostazioni, dispatch manuale | Applica le impostazioni standardizzate del repository dal template |
+
+### GitHub Pages Deploy
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+```
+
+Delega a un workflow riutilizzabile nel repository template:
+
+```yaml
+jobs:
+  docs:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+```
+
+Permessi: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Utilizza il gruppo di concorrenza `pages` con `cancel-in-progress: true` per evitare deploy obsoleti.
+
+Si attiva al push solo quando vengono modificati file nella cartella `docs/`. Può anche essere attivato manualmente tramite `workflow_dispatch`, che è il modo in cui il job di dispatch in `build-image.yml` attiva i rebuild downstream.
+
+### Build and Publish Docker Image
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    - cron: '0 6 * * *'
+  repository_dispatch:
+    types: [rebuild-image]
+```
+
+Passaggi:
+1. Checkout del codice
+2. Login su `ghcr.io` utilizzando `docker/login-action`
+3. Build e push utilizzando `docker/build-push-action` con contesto `.` e file `docker/Dockerfile`
+4. Tag: `ghcr.io/<owner>/<repo>:latest` e `ghcr.io/<owner>/<repo>:<sha>`
+
+Dopo un build riuscito, il job **dispatch** attiva `github-pages-deploy.yml` tramite `workflow_dispatch` su ogni repository downstream elencato nella configurazione `downstream-repos.json` del repository template. Questo assicura che tutti i repository di contenuto ricompilino la propria documentazione con l'immagine builder aggiornata.
+
+Il cron giornaliero garantisce che l'immagine rimanga aggiornata anche senza modifiche al codice (recepisce gli aggiornamenti delle dipendenze). L'evento `repository_dispatch` consente a sistemi esterni di attivare un rebuild.
+
+Si attiva al push solo quando vengono modificati file in `docker/` o `package*.json`. Le modifiche alla sola documentazione non attivano un rebuild dell'immagine.
+
+### Require Linked Issue
+
+```yaml
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+```
+
+Utilizza `nearform-actions/github-action-check-linked-issues@v1` per imporre che ogni PR faccia riferimento a una issue GitHub (ad esempio, `Closes #42` nella descrizione). Le PR di Dependabot sono escluse tramite:
+
+```yaml
+exclude-branches: "dependabot/**"
+```
+
+Un messaggio personalizzato indica ai contributori il formato atteso in caso di fallimento del controllo. Consultare [CONTRIBUTING.md](../CONTRIBUTING.md) per il flusso di lavoro completo del contributore.
+
+### Enforce Repository Settings
+
+```yaml
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/config/repo-settings.json'
+  workflow_dispatch:
+```
+
+Delega a un workflow riutilizzabile nel repository template:
+
+```yaml
+jobs:
+  enforce:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    secrets:
+      repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
+```
+
+Viene eseguito ogni 6 ore e al momento di modifiche al file di configurazione delle impostazioni. Applica le regole di protezione dei branch, le impostazioni di merge e altre configurazioni del repository da `.github/config/repo-settings.json`.
+
+## Modello di Governance
+
+### Template Centralizzato
+
+Il repository `f5xc-salesdemos/docs-control` è l'unica fonte di verità per:
+
+- Definizioni di workflow riutilizzabili (deploy della documentazione, applicazione delle impostazioni del repository)
+- File gestiti sincronizzati su tutti i repository dell'organizzazione
+- Configurazioni standard e regole di protezione dei branch
+
+Questo builder e tutti i repository di contenuto ereditano il proprio comportamento CI/CD dal template.
+
+### Sincronizzazione dei File Gestiti
+
+Il repository template può inviare file gestiti (come definizioni di workflow e file di configurazione) ai repository downstream. Questo mantiene tutti i repository allineati senza aggiornamenti manuali. La sincronizzazione viene eseguita tramite un workflow separato nel repository template.
+
+### Protezione dei Branch
+
+Il workflow enforce-repo-settings applica le regole di protezione dei branch dal template, tra cui:
+
+- Controlli di stato richiesti prima del merge
+- Controllo di issue collegata richiesto
+- Squash merge preferito
+- Eliminazione automatica dei branch head dopo il merge
+
+## Segreti
+
+| Segreto | Origine | Scopo |
+|---------|---------|-------|
+| `GITHUB_TOKEN` | Automatico (GitHub) | Utilizzato dalla maggior parte dei workflow per checkout, pubblicazione di pacchetti e chiamate API |
+| `REPO_ADMIN_TOKEN` | Manuale (segreto del repository) | Richiesto da enforce-repo-settings e dal job di dispatch per modificare la protezione dei branch, le impostazioni del repository e attivare i workflow downstream (necessita di scope admin) |

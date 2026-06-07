@@ -1,0 +1,214 @@
+---
+title: Sistema di Placeholder
+description: >-
+  Formato dei token, gestione dello stato, DOM walker, valori calcolati e come
+  aggiungere nuovi placeholder.
+sidebar:
+  order: 2
+i18n:
+  sourceHash: a92367b93514
+  translator: machine
+---
+
+Il sistema di placeholder consente ai lettori di personalizzare indirizzi IP, ASN e altri valori specifici dell'installazione in tutta la documentazione. Gli autori inseriscono token nel proprio Markdown; il browser li sostituisce con i valori forniti dall'utente a runtime.
+
+## Formato dei Token
+
+I token seguono il pattern regex:
+
+```
+x([A-Z][A-Z0-9_]+)x
+```
+
+Un token inizia e termina con una `x` minuscola e contiene un identificatore maiuscolo. Ad esempio, `xCUSTOMER_ASNx` fa riferimento al placeholder `CUSTOMER_ASN`.
+
+La regex è definita in `src/scripts/placeholder-dom.ts`:
+
+```ts
+const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
+```
+
+## Definizione dei Placeholder
+
+Tutti i placeholder sono dichiarati in `src/data/placeholders.json`. Ogni voce ha questa struttura:
+
+```json
+{
+  "CUSTOMER_ASN": {
+    "type": "text",
+    "default": "64496",
+    "description": "Your public ASN (registered with ARIN/RIR)"
+  }
+}
+```
+
+| Campo | Obbligatorio | Descrizione |
+|-------|-------------|-------------|
+| `type` | sì | `"text"` per input libero, `"dropdown"` per menu a selezione |
+| `default` | sì | Valore iniziale mostrato prima che il lettore effettui modifiche |
+| `description` | sì | Etichetta visualizzata nel modulo |
+| `options` | solo per dropdown | Array di valori consentiti |
+
+## Gestione dello Stato
+
+`src/lib/placeholder-store.ts` gestisce tutto lo stato dei placeholder.
+
+### Archiviazione
+
+I valori sono persistiti in `localStorage` sotto la chiave `f5xc-placeholders`. Lo store espone quattro funzioni:
+
+| Funzione | Scopo |
+|----------|-------|
+| `getDefaults()` | Restituisce una mappa di ogni chiave placeholder con il relativo valore `default` dal JSON |
+| `loadValues()` | Legge da localStorage, ricade su `getDefaults()` in caso di assenza |
+| `saveValues(values)` | Scrive la mappa corrente in localStorage |
+| `clearValues()` | Rimuove la voce da localStorage |
+
+### Gruppi di Campi
+
+`FIELD_GROUPS` organizza le chiavi dei placeholder in sezioni etichettate per l'interfaccia del modulo:
+
+```ts
+export const FIELD_GROUPS: FieldGroup[] = [
+  { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
+  { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
+  { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
+  // ... altri gruppi
+];
+```
+
+### Valori Calcolati
+
+Alcuni valori sono derivati dall'input dell'utente anziché inseriti direttamente. `getComputedValues()` li calcola a partire da tabelle di lookup:
+
+```ts
+const cidrToMask: Record<string, string> = {
+  '/24 (256 IPs)': '255.255.255.0',
+  '/23 (512 IPs)': '255.255.254.0',
+  // ...
+};
+```
+
+Vengono prodotti due placeholder calcolati:
+
+| Chiave Calcolata | Derivata Da | Esempio |
+|-----------------|-------------|---------|
+| `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` tramite lookup `cidrToMask` | `255.255.255.0` |
+| `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` tramite `cidrToShort` | `192.0.2.0/24` |
+
+`getAllValues()` unisce i valori inseriti dall'utente con i valori calcolati, fornendo una mappa completa per la sostituzione.
+
+### Emissione degli Eventi
+
+`emitChange()` invia un CustomEvent `placeholder-change` su `document` con la mappa completa dei valori come `detail`:
+
+```ts
+export function emitChange(values: Record<string, string>) {
+  document.dispatchEvent(
+    new CustomEvent('placeholder-change', { detail: getAllValues(values) }),
+  );
+}
+```
+
+Questo evento pilota sia gli aggiornamenti degli span nel DOM sia il ri-rendering dei diagrammi Mermaid.
+
+## Componente React del Modulo
+
+`src/components/PlaceholderForm.tsx` fornisce l'interfaccia di modifica.
+
+- **Stato**: `useState` inizializzato da `loadValues()`
+- **Al montaggio**: `useEffect` chiama `emitChange()` per attivare la sostituzione iniziale nel DOM
+- **handleChange**: Aggiorna lo stato React, chiama `saveValues()` e `emitChange()`
+- **handleReset**: Chiama `clearValues()`, ripristina lo stato a `getDefaults()`, emette l'evento di modifica
+- **Rendering**: Itera `FIELD_GROUPS`, generando un `<fieldset>` per gruppo. Ogni chiave ottiene un `<input>` (tipo text) o un `<select>` (tipo dropdown)
+- **Layout**: Il modulo è racchiuso in un elemento `<details>`, compresso per impostazione predefinita
+
+## Wrapper Astro
+
+`src/components/PlaceholderFormWrapper.astro` collega il componente React alla pagina Astro:
+
+```astro
+<PlaceholderForm client:only="react" />
+
+<script>
+  import '../scripts/placeholder-dom.ts';
+</script>
+```
+
+`client:only="react"` indica ad Astro di idratare il componente esclusivamente lato client (senza SSR). Il tag `<script>` importa il DOM walker affinché venga eseguito su ogni pagina che include questo wrapper.
+
+Il wrapper inietta anche CSS globale per lo stile del modulo (`.ph-form-wrapper`, `.ph-grid`, `.ph-value`, ecc.).
+
+## DOM Walker
+
+`src/scripts/placeholder-dom.ts` gestisce la sostituzione dei token lato client.
+
+### Scansione Iniziale
+
+Al caricamento della pagina, viene eseguita `init()`:
+
+1. Seleziona `.sl-markdown-content` come radice (ricade su `document.body` in caso di assenza)
+2. Chiama `walkTextNodes(root, values)` che utilizza `document.createTreeWalker` con `NodeFilter.SHOW_TEXT`
+3. Per ogni nodo di testo corrispondente alla regex del token, lo suddivide in un document fragment composto da nodi di testo puro e elementi `<span data-ph="KEY" class="ph-value">`
+4. Sostituisce il nodo di testo originale con il fragment
+
+Dopo la scansione, il DOM contiene span con attributi `data-ph` al posto dei token grezzi.
+
+### Aggiornamenti Successivi
+
+Quando il modulo emette un evento `placeholder-change`, viene eseguita `updateSpans()`:
+
+```ts
+document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
+  const name = span.getAttribute('data-ph')!;
+  if (values[name] !== undefined) {
+    span.textContent = values[name];
+  }
+});
+```
+
+Questo evita di riscansionare l'albero — aggiorna direttamente il contenuto testuale degli span.
+
+### Listener degli Eventi
+
+Lo script registra due listener:
+
+| Evento | Handler | Scopo |
+|--------|---------|-------|
+| `placeholder-change` | `handleChange` | Aggiorna gli span e ri-renderizza i diagrammi Mermaid |
+| `astro:page-load` | `init` | Riscansiona il DOM dopo la navigazione client-side di Astro |
+
+## Come Fare: Aggiungere un Nuovo Placeholder
+
+1. **Aggiungere la voce JSON** in `src/data/placeholders.json`:
+   ```json
+   "MY_NEW_VALUE": {
+     "type": "text",
+     "default": "example",
+     "description": "Description shown in the form"
+   }
+   ```
+
+2. **Aggiungere la chiave a un gruppo di campi** in `src/lib/placeholder-store.ts`. Aggiungerla all'array `keys` di un gruppo esistente oppure creare un nuovo gruppo in `FIELD_GROUPS`.
+
+3. **Utilizzare il token nei contenuti**: Scrivere `xMY_NEW_VALUEx` in qualsiasi file `.mdx`. Il DOM walker lo sostituirà a runtime.
+
+## Come Fare: Aggiungere un Valore Calcolato
+
+I valori calcolati sono derivati da altri placeholder. Per aggiungerne uno:
+
+1. Aggiungere una tabella di lookup (se necessario) in `src/lib/placeholder-store.ts`, seguendo il pattern di `cidrToMask`.
+
+2. Estendere `getComputedValues()` per includere la nuova chiave derivata:
+   ```ts
+   export function getComputedValues(values: Record<string, string>): Record<string, string> {
+     // ... logica esistente
+     return {
+       PROTECTED_MASK_V4: mask,
+       PROTECTED_PREFIX_V4: `${net}${short}`,
+       MY_COMPUTED: derivedValue,  // aggiungere qui
+     };
+   }
+   ```
+
+3. Utilizzare `xMY_COMPUTEDx` nei contenuti come qualsiasi altro token. I valori calcolati non necessitano di una voce in `placeholders.json` né di un gruppo di campi — sono invisibili al modulo.

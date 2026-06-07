@@ -1,0 +1,214 @@
+---
+title: Platzhalter-System
+description: >-
+  Token-Format, Zustandsverwaltung, DOM-Walker, berechnete Werte und wie neue
+  Platzhalter hinzugefügt werden.
+sidebar:
+  order: 2
+i18n:
+  sourceHash: a92367b93514
+  translator: machine
+---
+
+Das Platzhalter-System ermöglicht es Lesern, IP-Adressen, ASNs und andere bereitstellungsspezifische Werte in der gesamten Dokumentation anzupassen. Autoren schreiben Tokens in ihrem Markdown; der Browser ersetzt diese zur Laufzeit durch vom Benutzer eingegebene Werte.
+
+## Token-Format
+
+Tokens folgen dem Regex-Muster:
+
+```
+x([A-Z][A-Z0-9_]+)x
+```
+
+Ein Token beginnt und endet mit einem Kleinbuchstaben `x` und enthält einen Bezeichner in Großbuchstaben. Zum Beispiel referenziert `xCUSTOMER_ASNx` den Platzhalter `CUSTOMER_ASN`.
+
+Der reguläre Ausdruck ist in `src/scripts/placeholder-dom.ts` definiert:
+
+```ts
+const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
+```
+
+## Platzhalter-Definitionen
+
+Alle Platzhalter werden in `src/data/placeholders.json` deklariert. Jeder Eintrag hat folgende Struktur:
+
+```json
+{
+  "CUSTOMER_ASN": {
+    "type": "text",
+    "default": "64496",
+    "description": "Your public ASN (registered with ARIN/RIR)"
+  }
+}
+```
+
+| Feld | Erforderlich | Beschreibung |
+|------|-------------|--------------|
+| `type` | ja | `"text"` für Freitexteingabe, `"dropdown"` für Auswahlmenüs |
+| `default` | ja | Anfangswert, der angezeigt wird, bevor der Leser etwas ändert |
+| `description` | ja | Bezeichnung, die im Formular angezeigt wird |
+| `options` | nur für Dropdown | Array der zulässigen Werte |
+
+## Zustandsverwaltung
+
+`src/lib/placeholder-store.ts` verwaltet den gesamten Platzhalter-Zustand.
+
+### Speicherung
+
+Werte werden im `localStorage` unter dem Schlüssel `f5xc-placeholders` persistiert. Der Store stellt vier Funktionen bereit:
+
+| Funktion | Zweck |
+|----------|-------|
+| `getDefaults()` | Gibt eine Map aller Platzhalter-Schlüssel mit ihren `default`-Werten aus der JSON-Datei zurück |
+| `loadValues()` | Liest aus dem localStorage, fällt auf `getDefaults()` zurück |
+| `saveValues(values)` | Schreibt die aktuelle Map in den localStorage |
+| `clearValues()` | Entfernt den localStorage-Eintrag |
+
+### Feldgruppen
+
+`FIELD_GROUPS` organisiert die Platzhalter-Schlüssel in beschriftete Abschnitte für die Formular-Benutzeroberfläche:
+
+```ts
+export const FIELD_GROUPS: FieldGroup[] = [
+  { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
+  { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
+  { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
+  // ... weitere Gruppen
+];
+```
+
+### Berechnete Werte
+
+Einige Werte werden aus Benutzereingaben abgeleitet, anstatt direkt eingegeben zu werden. `getComputedValues()` berechnet diese aus Nachschlagetabellen:
+
+```ts
+const cidrToMask: Record<string, string> = {
+  '/24 (256 IPs)': '255.255.255.0',
+  '/23 (512 IPs)': '255.255.254.0',
+  // ...
+};
+```
+
+Es werden zwei berechnete Platzhalter erzeugt:
+
+| Berechneter Schlüssel | Abgeleitet von | Beispiel |
+|----------------------|----------------|----------|
+| `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` über `cidrToMask`-Nachschlagetabelle | `255.255.255.0` |
+| `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` über `cidrToShort` | `192.0.2.0/24` |
+
+`getAllValues()` führt vom Benutzer eingegebene Werte mit berechneten Werten zusammen und liefert eine vollständige Map für die Substitution.
+
+### Ereignisauslösung
+
+`emitChange()` löst ein `placeholder-change` CustomEvent auf `document` aus, wobei die vollständige Werte-Map als `detail` übergeben wird:
+
+```ts
+export function emitChange(values: Record<string, string>) {
+  document.dispatchEvent(
+    new CustomEvent('placeholder-change', { detail: getAllValues(values) }),
+  );
+}
+```
+
+Dieses Ereignis steuert sowohl die DOM-Span-Aktualisierungen als auch das erneute Rendern von Mermaid-Diagrammen.
+
+## React-Formularkomponente
+
+`src/components/PlaceholderForm.tsx` stellt die Bearbeitungsoberfläche bereit.
+
+- **Zustand**: `useState` wird mit `loadValues()` initialisiert
+- **Beim Mounten**: `useEffect` ruft `emitChange()` auf, um die initiale DOM-Substitution auszulösen
+- **handleChange**: Aktualisiert den React-Zustand, ruft `saveValues()` und `emitChange()` auf
+- **handleReset**: Ruft `clearValues()` auf, setzt den Zustand auf `getDefaults()` zurück und löst ein Change-Ereignis aus
+- **Rendering**: Iteriert über `FIELD_GROUPS` und rendert ein `<fieldset>` pro Gruppe. Jeder Schlüssel erhält entweder ein `<input>` (Text-Typ) oder ein `<select>` (Dropdown-Typ)
+- **Layout**: Das Formular ist in ein `<details>`-Element eingebettet, das standardmäßig eingeklappt ist
+
+## Astro-Wrapper
+
+`src/components/PlaceholderFormWrapper.astro` verbindet die React-Komponente mit der Astro-Seite:
+
+```astro
+<PlaceholderForm client:only="react" />
+
+<script>
+  import '../scripts/placeholder-dom.ts';
+</script>
+```
+
+`client:only="react"` weist Astro an, die Komponente ausschließlich auf dem Client zu hydrieren (kein SSR). Das `<script>`-Tag importiert den DOM-Walker, damit er auf jeder Seite ausgeführt wird, die diesen Wrapper einbindet.
+
+Der Wrapper injiziert außerdem globales CSS für die Formulargestaltung (`.ph-form-wrapper`, `.ph-grid`, `.ph-value`, usw.).
+
+## DOM-Walker
+
+`src/scripts/placeholder-dom.ts` übernimmt die clientseitige Token-Ersetzung.
+
+### Initialer Durchlauf
+
+Beim Seitenladung wird `init()` ausgeführt:
+
+1. Wählt `.sl-markdown-content` als Wurzelelement (fällt auf `document.body` zurück)
+2. Ruft `walkTextNodes(root, values)` auf, das `document.createTreeWalker` mit `NodeFilter.SHOW_TEXT` verwendet
+3. Für jeden Textknoten, der dem Token-Regex entspricht, wird dieser in ein Dokumentfragment aus einfachen Textknoten und `<span data-ph="KEY" class="ph-value">`-Elementen aufgeteilt
+4. Ersetzt den ursprünglichen Textknoten durch das Fragment
+
+Nach dem Durchlauf enthält das DOM Spans mit `data-ph`-Attributen anstelle der rohen Tokens.
+
+### Nachfolgende Aktualisierungen
+
+Wenn das Formular ein `placeholder-change`-Ereignis auslöst, wird `updateSpans()` ausgeführt:
+
+```ts
+document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
+  const name = span.getAttribute('data-ph')!;
+  if (values[name] !== undefined) {
+    span.textContent = values[name];
+  }
+});
+```
+
+Dies vermeidet ein erneutes Durchlaufen des Baums — es aktualisiert direkt den Textinhalt der Spans.
+
+### Ereignis-Listener
+
+Das Skript registriert zwei Listener:
+
+| Ereignis | Handler | Zweck |
+|----------|---------|-------|
+| `placeholder-change` | `handleChange` | Aktualisiert Spans und rendert Mermaid-Diagramme neu |
+| `astro:page-load` | `init` | Durchläuft das DOM erneut nach einer clientseitigen Astro-Navigation |
+
+## Anleitung: Neuen Platzhalter hinzufügen
+
+1. **JSON-Eintrag hinzufügen** in `src/data/placeholders.json`:
+   ```json
+   "MY_NEW_VALUE": {
+     "type": "text",
+     "default": "example",
+     "description": "Description shown in the form"
+   }
+   ```
+
+2. **Den Schlüssel einer Feldgruppe zuordnen** in `src/lib/placeholder-store.ts`. Fügen Sie ihn entweder zum `keys`-Array einer bestehenden Gruppe hinzu oder erstellen Sie eine neue Gruppe in `FIELD_GROUPS`.
+
+3. **Das Token im Inhalt verwenden**: Schreiben Sie `xMY_NEW_VALUEx` in einer beliebigen `.mdx`-Datei. Der DOM-Walker wird es zur Laufzeit ersetzen.
+
+## Anleitung: Berechneten Wert hinzufügen
+
+Berechnete Werte werden von anderen Platzhaltern abgeleitet. So fügen Sie einen hinzu:
+
+1. Fügen Sie eine Nachschlagetabelle (falls erforderlich) in `src/lib/placeholder-store.ts` hinzu, nach dem Muster von `cidrToMask`.
+
+2. Erweitern Sie `getComputedValues()` um den neuen abgeleiteten Schlüssel:
+   ```ts
+   export function getComputedValues(values: Record<string, string>): Record<string, string> {
+     // ... bestehende Logik
+     return {
+       PROTECTED_MASK_V4: mask,
+       PROTECTED_PREFIX_V4: `${net}${short}`,
+       MY_COMPUTED: derivedValue,  // hier hinzufügen
+     };
+   }
+   ```
+
+3. Verwenden Sie `xMY_COMPUTEDx` im Inhalt wie jedes andere Token. Berechnete Werte benötigen keinen `placeholders.json`-Eintrag und keine Feldgruppe — sie sind für das Formular unsichtbar.

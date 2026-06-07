@@ -1,0 +1,114 @@
+---
+title: สถาปัตยกรรม
+description: >-
+  การออกแบบระบบ, โครงสร้างไดเรกทอรี, ระบบธีม
+  และไปป์ไลน์การบิลด์สำหรับตัวสร้างเอกสาร
+sidebar:
+  order: 5
+i18n:
+  sourceHash: a16b586bcbe1
+  translator: machine
+---
+
+## ภาพรวม
+
+ตัวสร้างเอกสารเป็นระบบ [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) ที่ทำงานในคอนเทนเนอร์ รีโปเนื้อหาจะจัดเตรียมไฟล์ Markdown/MDX ส่วนตัวสร้างจะจัดเตรียมเฟรมเวิร์ก ธีม และลอจิกการบิลด์ ทั้งสองส่วนจะมาบรรจบกันในขั้นตอนการบิลด์ภายใน Docker คอนเทนเนอร์
+
+## โมเดลการฉีดเนื้อหา
+
+รีโปเนื้อหาจะเก็บเอกสารไว้ในไดเรกทอรี `docs/` ในขั้นตอนการบิลด์ คอนเทนเนอร์จะคัดลอกไฟล์เหล่านั้นไปยัง `src/content/docs/` ซึ่ง content collection ของ Astro จะรับไปประมวลผลต่อ
+
+```
+content-repo/
+  docs/           ← เขียนโดยทีมเนื้อหา
+    index.mdx
+    guide.mdx
+
+docs-builder/
+  src/content/docs/ ← ว่างเปล่าในสถานะปกติ (.gitkeep)
+```
+
+สคริปต์ entrypoint (`docker/entrypoint.sh`) ทำหน้าที่คัดลอก:
+
+```sh
+cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+```
+
+ซึ่งหมายความว่ารีโปของตัวสร้างจะส่งมอบพร้อมไดเรกทอรี `src/content/docs/` ที่ว่างเปล่า เนื้อหาจะปรากฏเฉพาะในขั้นตอนการบิลด์เท่านั้น
+
+## ระบบธีม
+
+ธีม Starlight ถูกเผยแพร่เป็นแพ็คเกจ npm แยกต่างหาก `package.json` ใช้ npm alias เพื่อแมปชื่อย่อไปยังแพ็คเกจในรีจิสทรีแบบมีขอบเขต:
+
+```json
+"@f5xc-salesdemos/docs-theme": "^1.29.0"
+```
+
+แพ็คเกจธีมเป็นเจ้าของ `astro.config.mjs` ในขั้นตอนการบิลด์ entrypoint จะคัดลอกไฟล์นี้ไปยังรูทของโปรเจกต์:
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+```
+
+วิธีนี้ทำให้การกำหนดค่าอยู่ศูนย์กลาง — รีโปเนื้อหาและตัวสร้างเองไม่จำเป็นต้องดูแล Astro config ของตนเอง
+
+## โครงสร้างไดเรกทอรีซอร์สโค้ด
+
+```
+src/
+  components/
+    PlaceholderForm.tsx          # ฟอร์ม React สำหรับแก้ไขค่า placeholder
+    PlaceholderFormWrapper.astro # Astro wrapper, โหลดสคริปต์ DOM และ CSS ทั่วไป
+  content/
+    docs/                        # จุดเมาท์สำหรับเนื้อหาที่ถูกฉีดเข้ามา
+  content.config.ts              # คำจำกัดความ content collection ของ Starlight
+  data/
+    placeholders.json            # คำจำกัดความโทเค็น placeholder
+  lib/
+    placeholder-store.ts         # การจัดการสถานะ: โหลด, บันทึก, คำนวณ, ส่งเหตุการณ์
+  scripts/
+    placeholder-dom.ts           # DOM walker ฝั่งไคลเอนต์และตัวเรนเดอร์ Mermaid
+```
+
+## Content Collection
+
+`src/content.config.ts` กำหนด collection `docs` เพียงรายการเดียวโดยใช้ loader และ schema ของ Starlight:
+
+```ts
+import { defineCollection } from 'astro:content';
+import { docsLoader } from '@astrojs/starlight/loaders';
+import { docsSchema } from '@astrojs/starlight/schema';
+
+export const collections = {
+  docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
+};
+```
+
+ไฟล์ `.md` หรือ `.mdx` ใดก็ตามที่อยู่ใน `src/content/docs/` จะกลายเป็นหน้าในเว็บไซต์ที่ถูกบิลด์
+
+## ขั้นตอนการบิลด์
+
+แผนภาพต่อไปนี้แสดงไปป์ไลน์การบิลด์แบบครบวงจรเมื่อ Docker คอนเทนเนอร์ทำงาน:
+
+```mermaid
+flowchart LR
+    A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
+    B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    E -->|cp astro.config| F[astro.config.mjs]
+    C --> G[astro build]
+    F --> G
+    G --> H[dist/<br/>static HTML]
+    H -->|cp| I[/output]
+```
+
+## การประมวลผลในขั้นตอนบิลด์ vs ขั้นตอนไคลเอนต์
+
+| ส่วนที่เกี่ยวข้อง | เมื่อใด | อย่างไร |
+|---------|------|-----|
+| MDX → HTML | ขั้นตอนบิลด์ | Astro compiler |
+| Mermaid code blocks → container divs | ขั้นตอนบิลด์ | ปลั๊กอิน `remark-mermaid.mjs` (จาก `docs-theme`) |
+| โทเค็น placeholder → span แบบโต้ตอบ | ขั้นตอนไคลเอนต์ | TreeWalker ใน `placeholder-dom.ts` |
+| การเรนเดอร์ Mermaid SVG | ขั้นตอนไคลเอนต์ | `mermaid` CDN import ใน `placeholder-dom.ts` |
+| สถานะฟอร์ม placeholder | ขั้นตอนไคลเอนต์ | `placeholder-store.ts` + localStorage |
+| Astro page transitions | ขั้นตอนไคลเอนต์ | ตัวรับฟังเหตุการณ์ `astro:page-load` |

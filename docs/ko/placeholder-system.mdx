@@ -1,0 +1,212 @@
+---
+title: 플레이스홀더 시스템
+description: '토큰 형식, 상태 관리, DOM 워커, 계산된 값, 새로운 플레이스홀더 추가 방법.'
+sidebar:
+  order: 2
+i18n:
+  sourceHash: a92367b93514
+  translator: machine
+---
+
+플레이스홀더 시스템은 독자가 문서 전체에서 IP 주소, ASN 및 기타 배포별 값을 맞춤 설정할 수 있게 해줍니다. 작성자는 Markdown에 토큰을 작성하고, 브라우저는 런타임에 이를 사용자가 제공한 값으로 대체합니다.
+
+## 토큰 형식
+
+토큰은 다음 정규식 패턴을 따릅니다:
+
+```
+x([A-Z][A-Z0-9_]+)x
+```
+
+토큰은 소문자 `x`로 시작하고 끝나며, 대문자 식별자를 포함합니다. 예를 들어, `xCUSTOMER_ASNx`는 `CUSTOMER_ASN` 플레이스홀더를 참조합니다.
+
+정규식은 `src/scripts/placeholder-dom.ts`에 정의되어 있습니다:
+
+```ts
+const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
+```
+
+## 플레이스홀더 정의
+
+모든 플레이스홀더는 `src/data/placeholders.json`에 선언됩니다. 각 항목은 다음과 같은 형태를 가집니다:
+
+```json
+{
+  "CUSTOMER_ASN": {
+    "type": "text",
+    "default": "64496",
+    "description": "Your public ASN (registered with ARIN/RIR)"
+  }
+}
+```
+
+| 필드 | 필수 여부 | 설명 |
+|-------|----------|-------------|
+| `type` | 예 | 자유 입력의 경우 `"text"`, 선택 메뉴의 경우 `"dropdown"` |
+| `default` | 예 | 독자가 변경하기 전에 표시되는 초기값 |
+| `description` | 예 | 폼에 표시되는 레이블 |
+| `options` | dropdown인 경우에만 | 허용되는 값의 배열 |
+
+## 상태 관리
+
+`src/lib/placeholder-store.ts`가 모든 플레이스홀더 상태를 처리합니다.
+
+### 저장소
+
+값은 `f5xc-placeholders` 키 아래 `localStorage`에 영속적으로 저장됩니다. 스토어는 네 가지 함수를 제공합니다:
+
+| 함수 | 목적 |
+|----------|---------|
+| `getDefaults()` | JSON에서 모든 플레이스홀더 키와 해당 `default` 값의 맵을 반환합니다 |
+| `loadValues()` | localStorage에서 읽어오며, 실패 시 `getDefaults()`로 대체합니다 |
+| `saveValues(values)` | 현재 맵을 localStorage에 기록합니다 |
+| `clearValues()` | localStorage 항목을 제거합니다 |
+
+### 필드 그룹
+
+`FIELD_GROUPS`는 폼 UI의 레이블이 지정된 섹션으로 플레이스홀더 키를 구성합니다:
+
+```ts
+export const FIELD_GROUPS: FieldGroup[] = [
+  { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
+  { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
+  { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
+  // ... 추가 그룹
+];
+```
+
+### 계산된 값
+
+일부 값은 직접 입력하는 것이 아니라 사용자 입력에서 파생됩니다. `getComputedValues()`는 조회 테이블에서 이러한 값을 계산합니다:
+
+```ts
+const cidrToMask: Record<string, string> = {
+  '/24 (256 IPs)': '255.255.255.0',
+  '/23 (512 IPs)': '255.255.254.0',
+  // ...
+};
+```
+
+두 가지 계산된 플레이스홀더가 생성됩니다:
+
+| 계산된 키 | 파생 원본 | 예시 |
+|-------------|-------------|---------|
+| `PROTECTED_MASK_V4` | `cidrToMask` 조회를 통한 `PROTECTED_CIDR_V4` | `255.255.255.0` |
+| `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `cidrToShort`를 통한 `PROTECTED_CIDR_V4` | `192.0.2.0/24` |
+
+`getAllValues()`는 사용자 입력 값과 계산된 값을 병합하여 치환을 위한 완전한 맵을 제공합니다.
+
+### 이벤트 발행
+
+`emitChange()`는 전체 값 맵을 `detail`로 포함하여 `document`에서 `placeholder-change` CustomEvent를 디스패치합니다:
+
+```ts
+export function emitChange(values: Record<string, string>) {
+  document.dispatchEvent(
+    new CustomEvent('placeholder-change', { detail: getAllValues(values) }),
+  );
+}
+```
+
+이 이벤트는 DOM span 업데이트와 Mermaid 다이어그램 재렌더링을 모두 구동합니다.
+
+## React 폼 컴포넌트
+
+`src/components/PlaceholderForm.tsx`는 편집 UI를 제공합니다.
+
+- **상태**: `loadValues()`로 초기화된 `useState`
+- **마운트 시**: `useEffect`가 `emitChange()`를 호출하여 초기 DOM 치환을 트리거합니다
+- **handleChange**: React 상태를 업데이트하고, `saveValues()`와 `emitChange()`를 호출합니다
+- **handleReset**: `clearValues()`를 호출하고, 상태를 `getDefaults()`로 재설정하며, 변경을 발행합니다
+- **렌더링**: `FIELD_GROUPS`를 순회하며 그룹마다 `<fieldset>`을 렌더링합니다. 각 키는 `<input>` (text 타입) 또는 `<select>` (dropdown 타입)을 가집니다
+- **레이아웃**: 폼은 `<details>` 요소로 감싸져 있으며, 기본적으로 접혀 있습니다
+
+## Astro 래퍼
+
+`src/components/PlaceholderFormWrapper.astro`는 React 컴포넌트를 Astro 페이지에 연결합니다:
+
+```astro
+<PlaceholderForm client:only="react" />
+
+<script>
+  import '../scripts/placeholder-dom.ts';
+</script>
+```
+
+`client:only="react"`는 Astro에게 컴포넌트를 순수하게 클라이언트에서만 하이드레이트하도록 지시합니다(SSR 없음). `<script>` 태그는 DOM 워커를 임포트하여 이 래퍼를 포함하는 모든 페이지에서 실행되도록 합니다.
+
+래퍼는 또한 폼 스타일링을 위한 전역 CSS(`.ph-form-wrapper`, `.ph-grid`, `.ph-value` 등)를 주입합니다.
+
+## DOM 워커
+
+`src/scripts/placeholder-dom.ts`는 클라이언트 측 토큰 대체를 처리합니다.
+
+### 초기 워크
+
+페이지 로드 시 `init()`이 실행됩니다:
+
+1. `.sl-markdown-content`를 루트로 선택합니다(`document.body`로 대체 가능)
+2. `document.createTreeWalker`와 `NodeFilter.SHOW_TEXT`를 사용하는 `walkTextNodes(root, values)`를 호출합니다
+3. 토큰 정규식과 일치하는 각 텍스트 노드에 대해, 일반 텍스트 노드와 `<span data-ph="KEY" class="ph-value">` 요소로 구성된 문서 프래그먼트로 분할합니다
+4. 원래 텍스트 노드를 프래그먼트로 대체합니다
+
+워크 이후, DOM에는 원시 토큰 대신 `data-ph` 속성을 가진 span이 포함됩니다.
+
+### 후속 업데이트
+
+폼이 `placeholder-change` 이벤트를 발행하면 `updateSpans()`가 실행됩니다:
+
+```ts
+document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
+  const name = span.getAttribute('data-ph')!;
+  if (values[name] !== undefined) {
+    span.textContent = values[name];
+  }
+});
+```
+
+이는 트리를 다시 워크하는 것을 방지합니다 — span 텍스트 콘텐츠를 직접 업데이트합니다.
+
+### 이벤트 리스너
+
+스크립트는 두 개의 리스너를 등록합니다:
+
+| 이벤트 | 핸들러 | 목적 |
+|-------|---------|---------|
+| `placeholder-change` | `handleChange` | span을 업데이트하고 Mermaid 다이어그램을 재렌더링합니다 |
+| `astro:page-load` | `init` | Astro 클라이언트 측 네비게이션 후 DOM을 다시 워크합니다 |
+
+## 방법: 새 플레이스홀더 추가하기
+
+1. **JSON 항목 추가** — `src/data/placeholders.json`에:
+   ```json
+   "MY_NEW_VALUE": {
+     "type": "text",
+     "default": "example",
+     "description": "Description shown in the form"
+   }
+   ```
+
+2. **필드 그룹에 키 추가** — `src/lib/placeholder-store.ts`에서. 기존 그룹의 `keys` 배열에 추가하거나 `FIELD_GROUPS`에 새 그룹을 생성합니다.
+
+3. **콘텐츠에서 토큰 사용**: 아무 `.mdx` 파일에 `xMY_NEW_VALUEx`를 작성합니다. DOM 워커가 런타임에 이를 대체합니다.
+
+## 방법: 계산된 값 추가하기
+
+계산된 값은 다른 플레이스홀더에서 파생됩니다. 추가하려면:
+
+1. `src/lib/placeholder-store.ts`에 `cidrToMask`의 패턴을 따라 조회 테이블을 추가합니다(필요한 경우).
+
+2. `getComputedValues()`를 확장하여 새로운 파생 키를 포함합니다:
+   ```ts
+   export function getComputedValues(values: Record<string, string>): Record<string, string> {
+     // ... 기존 로직
+     return {
+       PROTECTED_MASK_V4: mask,
+       PROTECTED_PREFIX_V4: `${net}${short}`,
+       MY_COMPUTED: derivedValue,  // 여기에 추가
+     };
+   }
+   ```
+
+3. 다른 토큰과 마찬가지로 콘텐츠에서 `xMY_COMPUTEDx`를 사용합니다. 계산된 값은 `placeholders.json` 항목이나 필드 그룹이 필요하지 않습니다 — 폼에서는 보이지 않습니다.

@@ -1,0 +1,114 @@
+---
+title: Arquitectura
+description: >-
+  Diseño del sistema, estructura de directorios, sistema de temas y pipeline de
+  compilación para el constructor de documentación.
+sidebar:
+  order: 5
+i18n:
+  sourceHash: a16b586bcbe1
+  translator: machine
+---
+
+## Descripción general
+
+El constructor de documentación es un sistema containerizado basado en [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/). Los repositorios de contenido proporcionan archivos Markdown/MDX; el constructor suministra el framework, el tema y la lógica de compilación. Las dos mitades se encuentran en tiempo de compilación dentro de un contenedor Docker.
+
+## Modelo de inyección de contenido
+
+Los repositorios de contenido mantienen su documentación en un directorio `docs/`. En tiempo de compilación, el contenedor copia esos archivos en `src/content/docs/`, donde la colección de contenido de Astro los recoge.
+
+```
+content-repo/
+  docs/           ← creado por los equipos de contenido
+    index.mdx
+    guide.mdx
+
+docs-builder/
+  src/content/docs/ ← vacío en reposo (.gitkeep)
+```
+
+El script de punto de entrada (`docker/entrypoint.sh`) realiza la copia:
+
+```sh
+cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+```
+
+Esto significa que el repositorio del constructor se distribuye con un directorio `src/content/docs/` vacío. El contenido solo aparece en tiempo de compilación.
+
+## Sistema de temas
+
+El tema de Starlight se publica como un paquete npm separado. `package.json` utiliza un alias de npm para mapear un nombre corto al paquete del registro con scope:
+
+```json
+"@f5xc-salesdemos/docs-theme": "^1.29.0"
+```
+
+El paquete del tema es propietario de `astro.config.mjs`. En tiempo de compilación, el punto de entrada lo copia en la raíz del proyecto:
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+```
+
+Esto mantiene la configuración centralizada — los repositorios de contenido y el propio constructor no mantienen su propia configuración de Astro.
+
+## Estructura del directorio fuente
+
+```
+src/
+  components/
+    PlaceholderForm.tsx          # Formulario React para editar valores de marcadores de posición
+    PlaceholderFormWrapper.astro # Wrapper de Astro, carga script DOM y CSS global
+  content/
+    docs/                        # Punto de montaje para contenido inyectado
+  content.config.ts              # Definición de colección de contenido de Starlight
+  data/
+    placeholders.json            # Definiciones de tokens de marcadores de posición
+  lib/
+    placeholder-store.ts         # Gestión de estado: cargar, guardar, calcular, emitir
+  scripts/
+    placeholder-dom.ts           # Walker DOM del lado del cliente y renderizador Mermaid
+```
+
+## Colección de contenido
+
+`src/content.config.ts` define una única colección `docs` usando el loader y esquema de Starlight:
+
+```ts
+import { defineCollection } from 'astro:content';
+import { docsLoader } from '@astrojs/starlight/loaders';
+import { docsSchema } from '@astrojs/starlight/schema';
+
+export const collections = {
+  docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
+};
+```
+
+Cualquier archivo `.md` o `.mdx` colocado en `src/content/docs/` se convierte en una página del sitio compilado.
+
+## Flujo de compilación
+
+El siguiente diagrama muestra el pipeline de compilación de extremo a extremo cuando se ejecuta el contenedor Docker:
+
+```mermaid
+flowchart LR
+    A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
+    B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    E -->|cp astro.config| F[astro.config.mjs]
+    C --> G[astro build]
+    F --> G
+    G --> H[dist/<br/>static HTML]
+    H -->|cp| I[/output]
+```
+
+## Procesamiento en tiempo de compilación vs tiempo de cliente
+
+| Concepto | Cuándo | Cómo |
+|----------|--------|------|
+| MDX → HTML | Tiempo de compilación | Compilador de Astro |
+| Bloques de código Mermaid → divs contenedores | Tiempo de compilación | Plugin `remark-mermaid.mjs` (de `docs-theme`) |
+| Tokens de marcadores de posición → spans interactivos | Tiempo de cliente | TreeWalker de `placeholder-dom.ts` |
+| Renderizado SVG de Mermaid | Tiempo de cliente | Importación CDN de `mermaid` en `placeholder-dom.ts` |
+| Estado del formulario de marcadores de posición | Tiempo de cliente | `placeholder-store.ts` + localStorage |
+| Transiciones de página de Astro | Tiempo de cliente | Listener del evento `astro:page-load` |

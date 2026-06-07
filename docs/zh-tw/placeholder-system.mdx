@@ -1,0 +1,212 @@
+---
+title: 佔位符系統
+description: Token 格式、狀態管理、DOM 遍歷器、計算值，以及如何新增佔位符。
+sidebar:
+  order: 2
+i18n:
+  sourceHash: a92367b93514
+  translator: machine
+---
+
+佔位符系統讓讀者能夠在整份文件中自訂 IP 位址、ASN 及其他部署相關的值。作者在 Markdown 中撰寫 token；瀏覽器會在執行階段將其替換為使用者提供的值。
+
+## Token 格式
+
+Token 遵循以下正規表達式模式：
+
+```
+x([A-Z][A-Z0-9_]+)x
+```
+
+Token 以小寫 `x` 開頭和結尾，中間包含大寫識別碼。例如，`xCUSTOMER_ASNx` 參照的是 `CUSTOMER_ASN` 佔位符。
+
+此正規表達式定義於 `src/scripts/placeholder-dom.ts`：
+
+```ts
+const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
+```
+
+## 佔位符定義
+
+所有佔位符都宣告在 `src/data/placeholders.json` 中。每個項目具有以下結構：
+
+```json
+{
+  "CUSTOMER_ASN": {
+    "type": "text",
+    "default": "64496",
+    "description": "Your public ASN (registered with ARIN/RIR)"
+  }
+}
+```
+
+| 欄位 | 必要 | 說明 |
+|-------|----------|-------------|
+| `type` | 是 | `"text"` 用於自由輸入，`"dropdown"` 用於下拉選單 |
+| `default` | 是 | 讀者變更前顯示的初始值 |
+| `description` | 是 | 表單中顯示的標籤 |
+| `options` | 僅下拉選單需要 | 允許值的陣列 |
+
+## 狀態管理
+
+`src/lib/placeholder-store.ts` 處理所有佔位符的狀態。
+
+### 儲存
+
+值透過 `localStorage` 以 `f5xc-placeholders` 為鍵名進行持久化。該 store 公開四個函式：
+
+| 函式 | 用途 |
+|----------|---------|
+| `getDefaults()` | 傳回每個佔位符鍵對應其 JSON 中 `default` 值的映射 |
+| `loadValues()` | 從 localStorage 讀取，若無資料則退回至 `getDefaults()` |
+| `saveValues(values)` | 將目前的映射寫入 localStorage |
+| `clearValues()` | 移除 localStorage 項目 |
+
+### 欄位群組
+
+`FIELD_GROUPS` 將佔位符鍵組織為帶有標籤的區段，供表單 UI 使用：
+
+```ts
+export const FIELD_GROUPS: FieldGroup[] = [
+  { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
+  { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
+  { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
+  // ... more groups
+];
+```
+
+### 計算值
+
+部分值是從使用者輸入衍生而來，而非直接輸入。`getComputedValues()` 透過查詢表計算這些值：
+
+```ts
+const cidrToMask: Record<string, string> = {
+  '/24 (256 IPs)': '255.255.255.0',
+  '/23 (512 IPs)': '255.255.254.0',
+  // ...
+};
+```
+
+產生兩個計算佔位符：
+
+| 計算鍵 | 衍生來源 | 範例 |
+|-------------|-------------|---------|
+| `PROTECTED_MASK_V4` | 透過 `cidrToMask` 查詢 `PROTECTED_CIDR_V4` | `255.255.255.0` |
+| `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + 透過 `cidrToShort` 查詢 `PROTECTED_CIDR_V4` | `192.0.2.0/24` |
+
+`getAllValues()` 將使用者輸入的值與計算值合併，提供完整的替換映射。
+
+### 事件發送
+
+`emitChange()` 在 `document` 上發送一個 `placeholder-change` CustomEvent，並將完整的值映射作為 `detail`：
+
+```ts
+export function emitChange(values: Record<string, string>) {
+  document.dispatchEvent(
+    new CustomEvent('placeholder-change', { detail: getAllValues(values) }),
+  );
+}
+```
+
+此事件驅動 DOM span 更新和 Mermaid 重新渲染。
+
+## React 表單元件
+
+`src/components/PlaceholderForm.tsx` 提供編輯 UI。
+
+- **狀態**：`useState` 以 `loadValues()` 初始化
+- **掛載時**：`useEffect` 呼叫 `emitChange()` 觸發初始 DOM 替換
+- **handleChange**：更新 React 狀態，呼叫 `saveValues()` 和 `emitChange()`
+- **handleReset**：呼叫 `clearValues()`，將狀態重設為 `getDefaults()`，發送變更事件
+- **渲染**：迭代 `FIELD_GROUPS`，為每個群組渲染一個 `<fieldset>`。每個鍵會渲染為 `<input>`（text 類型）或 `<select>`（dropdown 類型）
+- **版面配置**：表單包裹在 `<details>` 元素中，預設為摺疊狀態
+
+## Astro 包裝器
+
+`src/components/PlaceholderFormWrapper.astro` 將 React 元件連接至 Astro 頁面：
+
+```astro
+<PlaceholderForm client:only="react" />
+
+<script>
+  import '../scripts/placeholder-dom.ts';
+</script>
+```
+
+`client:only="react"` 告知 Astro 僅在客戶端進行元件水合（不進行 SSR）。`<script>` 標籤匯入 DOM 遍歷器，使其在每個包含此包裝器的頁面上執行。
+
+包裝器也注入了表單樣式的全域 CSS（`.ph-form-wrapper`、`.ph-grid`、`.ph-value` 等）。
+
+## DOM 遍歷器
+
+`src/scripts/placeholder-dom.ts` 處理客戶端的 token 替換。
+
+### 初始遍歷
+
+頁面載入時，`init()` 執行：
+
+1. 選取 `.sl-markdown-content` 作為根節點（退回至 `document.body`）
+2. 呼叫 `walkTextNodes(root, values)`，使用 `document.createTreeWalker` 搭配 `NodeFilter.SHOW_TEXT`
+3. 對於每個匹配 token 正規表達式的文字節點，將其拆分為包含純文字節點和 `<span data-ph="KEY" class="ph-value">` 元素的文件片段
+4. 用片段取代原始文字節點
+
+遍歷後，DOM 中包含具有 `data-ph` 屬性的 span，取代了原始 token。
+
+### 後續更新
+
+當表單發送 `placeholder-change` 事件時，`updateSpans()` 執行：
+
+```ts
+document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
+  const name = span.getAttribute('data-ph')!;
+  if (values[name] !== undefined) {
+    span.textContent = values[name];
+  }
+});
+```
+
+這避免了重新遍歷整棵樹——直接更新 span 的文字內容。
+
+### 事件監聽器
+
+此腳本註冊了兩個監聽器：
+
+| 事件 | 處理函式 | 用途 |
+|-------|---------|---------|
+| `placeholder-change` | `handleChange` | 更新 span 並重新渲染 Mermaid 圖表 |
+| `astro:page-load` | `init` | 在 Astro 客戶端導覽後重新遍歷 DOM |
+
+## 操作指南：新增佔位符
+
+1. **在 `src/data/placeholders.json` 中新增 JSON 項目**：
+   ```json
+   "MY_NEW_VALUE": {
+     "type": "text",
+     "default": "example",
+     "description": "Description shown in the form"
+   }
+   ```
+
+2. **在 `src/lib/placeholder-store.ts` 中將鍵加入欄位群組**。將其加入現有群組的 `keys` 陣列，或在 `FIELD_GROUPS` 中建立新群組。
+
+3. **在內容中使用 token**：在任何 `.mdx` 檔案中撰寫 `xMY_NEW_VALUEx`。DOM 遍歷器會在執行階段進行替換。
+
+## 操作指南：新增計算值
+
+計算值是從其他佔位符衍生而來的。新增方式如下：
+
+1. 在 `src/lib/placeholder-store.ts` 中新增查詢表（如有需要），遵循 `cidrToMask` 的模式。
+
+2. 擴展 `getComputedValues()` 以包含新的衍生鍵：
+   ```ts
+   export function getComputedValues(values: Record<string, string>): Record<string, string> {
+     // ... existing logic
+     return {
+       PROTECTED_MASK_V4: mask,
+       PROTECTED_PREFIX_V4: `${net}${short}`,
+       MY_COMPUTED: derivedValue,  // add here
+     };
+   }
+   ```
+
+3. 在內容中像其他 token 一樣使用 `xMY_COMPUTEDx`。計算值不需要 `placeholders.json` 項目或欄位群組——它們對表單是不可見的。

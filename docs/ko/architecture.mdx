@@ -1,0 +1,112 @@
+---
+title: 아키텍처
+description: '문서 빌더의 시스템 설계, 디렉토리 레이아웃, 테마 시스템 및 빌드 파이프라인.'
+sidebar:
+  order: 5
+i18n:
+  sourceHash: a16b586bcbe1
+  translator: machine
+---
+
+## 개요
+
+문서 빌더는 컨테이너화된 [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) 시스템입니다. 콘텐츠 저장소는 Markdown/MDX 파일을 제공하고, 빌더는 프레임워크, 테마, 빌드 로직을 제공합니다. 이 두 부분은 Docker 컨테이너 내부에서 빌드 시점에 결합됩니다.
+
+## 콘텐츠 주입 모델
+
+콘텐츠 저장소는 문서를 `docs/` 디렉토리에 보관합니다. 빌드 시점에 컨테이너가 해당 파일들을 `src/content/docs/`로 복사하며, Astro의 콘텐츠 컬렉션이 이를 인식합니다.
+
+```
+content-repo/
+  docs/           ← 콘텐츠 팀이 작성
+    index.mdx
+    guide.mdx
+
+docs-builder/
+  src/content/docs/ ← 평상시에는 비어 있음 (.gitkeep)
+```
+
+엔트리포인트 스크립트(`docker/entrypoint.sh`)가 복사를 수행합니다:
+
+```sh
+cp -r "$CONTENT_DIR"/* /app/src/content/docs/
+```
+
+이는 빌더 저장소 자체가 빈 `src/content/docs/` 디렉토리를 포함하여 배포됨을 의미합니다. 콘텐츠는 빌드 시점에만 나타납니다.
+
+## 테마 시스템
+
+Starlight 테마는 별도의 npm 패키지로 게시됩니다. `package.json`은 npm 별칭을 사용하여 짧은 이름을 스코프 레지스트리 패키지에 매핑합니다:
+
+```json
+"@f5xc-salesdemos/docs-theme": "^1.29.0"
+```
+
+테마 패키지가 `astro.config.mjs`를 소유합니다. 빌드 시점에 엔트리포인트가 이를 프로젝트 루트로 복사합니다:
+
+```sh
+cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+```
+
+이를 통해 설정이 중앙 집중화됩니다 — 콘텐츠 저장소와 빌더 자체는 자체적인 Astro 설정을 유지하지 않습니다.
+
+## 소스 디렉토리 레이아웃
+
+```
+src/
+  components/
+    PlaceholderForm.tsx          # 플레이스홀더 값 편집용 React 폼
+    PlaceholderFormWrapper.astro # Astro 래퍼, DOM 스크립트 및 전역 CSS 로드
+  content/
+    docs/                        # 주입된 콘텐츠의 마운트 지점
+  content.config.ts              # Starlight 콘텐츠 컬렉션 정의
+  data/
+    placeholders.json            # 플레이스홀더 토큰 정의
+  lib/
+    placeholder-store.ts         # 상태 관리: 로드, 저장, 계산, 발행
+  scripts/
+    placeholder-dom.ts           # 클라이언트 측 DOM 워커 및 Mermaid 렌더러
+```
+
+## 콘텐츠 컬렉션
+
+`src/content.config.ts`는 Starlight의 로더와 스키마를 사용하여 단일 `docs` 컬렉션을 정의합니다:
+
+```ts
+import { defineCollection } from 'astro:content';
+import { docsLoader } from '@astrojs/starlight/loaders';
+import { docsSchema } from '@astrojs/starlight/schema';
+
+export const collections = {
+  docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
+};
+```
+
+`src/content/docs/`에 배치된 모든 `.md` 또는 `.mdx` 파일은 빌드된 사이트의 페이지가 됩니다.
+
+## 빌드 흐름
+
+다음 다이어그램은 Docker 컨테이너가 실행될 때의 엔드투엔드 빌드 파이프라인을 보여줍니다:
+
+```mermaid
+flowchart LR
+    A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
+    B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    E -->|cp astro.config| F[astro.config.mjs]
+    C --> G[astro build]
+    F --> G
+    G --> H[dist/<br/>static HTML]
+    H -->|cp| I[/output]
+```
+
+## 빌드 시점 vs 클라이언트 시점 처리
+
+| 관심 영역 | 시점 | 방법 |
+|---------|------|-----|
+| MDX → HTML | 빌드 시점 | Astro 컴파일러 |
+| Mermaid 코드 블록 → 컨테이너 div | 빌드 시점 | `remark-mermaid.mjs` 플러그인 (`docs-theme`에서 제공) |
+| 플레이스홀더 토큰 → 인터랙티브 span | 클라이언트 시점 | `placeholder-dom.ts` TreeWalker |
+| Mermaid SVG 렌더링 | 클라이언트 시점 | `placeholder-dom.ts`의 `mermaid` CDN 임포트 |
+| 플레이스홀더 폼 상태 | 클라이언트 시점 | `placeholder-store.ts` + localStorage |
+| Astro 페이지 전환 | 클라이언트 시점 | `astro:page-load` 이벤트 리스너 |

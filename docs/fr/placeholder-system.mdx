@@ -1,0 +1,214 @@
+---
+title: Système de placeholders
+description: >-
+  Format des jetons, gestion de l'état, parcours du DOM, valeurs calculées et
+  procédure d'ajout de nouveaux placeholders.
+sidebar:
+  order: 2
+i18n:
+  sourceHash: a92367b93514
+  translator: machine
+---
+
+Le système de placeholders permet aux lecteurs de personnaliser les adresses IP, les ASN et d'autres valeurs spécifiques au déploiement dans l'ensemble de la documentation. Les auteurs écrivent des jetons dans leur Markdown ; le navigateur les remplace par les valeurs fournies par l'utilisateur au moment de l'exécution.
+
+## Format des jetons
+
+Les jetons suivent le patron d'expression régulière :
+
+```
+x([A-Z][A-Z0-9_]+)x
+```
+
+Un jeton commence et se termine par un `x` minuscule et contient un identifiant en majuscules. Par exemple, `xCUSTOMER_ASNx` fait référence au placeholder `CUSTOMER_ASN`.
+
+L'expression régulière est définie dans `src/scripts/placeholder-dom.ts` :
+
+```ts
+const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
+```
+
+## Définitions des placeholders
+
+Tous les placeholders sont déclarés dans `src/data/placeholders.json`. Chaque entrée a la structure suivante :
+
+```json
+{
+  "CUSTOMER_ASN": {
+    "type": "text",
+    "default": "64496",
+    "description": "Your public ASN (registered with ARIN/RIR)"
+  }
+}
+```
+
+| Champ | Requis | Description |
+|-------|--------|-------------|
+| `type` | oui | `"text"` pour une saisie libre, `"dropdown"` pour les menus de sélection |
+| `default` | oui | Valeur initiale affichée avant toute modification par le lecteur |
+| `description` | oui | Libellé affiché dans le formulaire |
+| `options` | uniquement pour dropdown | Tableau des valeurs autorisées |
+
+## Gestion de l'état
+
+`src/lib/placeholder-store.ts` gère l'ensemble de l'état des placeholders.
+
+### Stockage
+
+Les valeurs sont persistées dans `localStorage` sous la clé `f5xc-placeholders`. Le store expose quatre fonctions :
+
+| Fonction | Rôle |
+|----------|------|
+| `getDefaults()` | Retourne une correspondance de chaque clé de placeholder vers sa valeur `default` issue du JSON |
+| `loadValues()` | Lit depuis localStorage, se rabat sur `getDefaults()` |
+| `saveValues(values)` | Écrit la correspondance courante dans localStorage |
+| `clearValues()` | Supprime l'entrée localStorage |
+
+### Groupes de champs
+
+`FIELD_GROUPS` organise les clés de placeholders en sections étiquetées pour l'interface du formulaire :
+
+```ts
+export const FIELD_GROUPS: FieldGroup[] = [
+  { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
+  { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
+  { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
+  // ... autres groupes
+];
+```
+
+### Valeurs calculées
+
+Certaines valeurs sont dérivées des saisies de l'utilisateur plutôt que saisies directement. `getComputedValues()` les calcule à partir de tables de correspondance :
+
+```ts
+const cidrToMask: Record<string, string> = {
+  '/24 (256 IPs)': '255.255.255.0',
+  '/23 (512 IPs)': '255.255.254.0',
+  // ...
+};
+```
+
+Deux placeholders calculés sont produits :
+
+| Clé calculée | Dérivée de | Exemple |
+|--------------|-----------|---------|
+| `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` via la table `cidrToMask` | `255.255.255.0` |
+| `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` via `cidrToShort` | `192.0.2.0/24` |
+
+`getAllValues()` fusionne les valeurs saisies par l'utilisateur avec les valeurs calculées, fournissant une correspondance complète pour la substitution.
+
+### Émission d'événements
+
+`emitChange()` dispatche un CustomEvent `placeholder-change` sur `document` avec la correspondance complète des valeurs comme `detail` :
+
+```ts
+export function emitChange(values: Record<string, string>) {
+  document.dispatchEvent(
+    new CustomEvent('placeholder-change', { detail: getAllValues(values) }),
+  );
+}
+```
+
+Cet événement pilote à la fois la mise à jour des spans dans le DOM et le re-rendu des diagrammes Mermaid.
+
+## Composant React du formulaire
+
+`src/components/PlaceholderForm.tsx` fournit l'interface d'édition.
+
+- **État** : `useState` initialisé à partir de `loadValues()`
+- **Au montage** : `useEffect` appelle `emitChange()` pour déclencher la substitution initiale dans le DOM
+- **handleChange** : Met à jour l'état React, appelle `saveValues()` et `emitChange()`
+- **handleReset** : Appelle `clearValues()`, réinitialise l'état à `getDefaults()`, émet le changement
+- **Rendu** : Itère sur `FIELD_GROUPS`, affichant un `<fieldset>` par groupe. Chaque clé obtient soit un `<input>` (type text) soit un `<select>` (type dropdown)
+- **Mise en page** : Le formulaire est encapsulé dans un élément `<details>`, réduit par défaut
+
+## Wrapper Astro
+
+`src/components/PlaceholderFormWrapper.astro` connecte le composant React à la page Astro :
+
+```astro
+<PlaceholderForm client:only="react" />
+
+<script>
+  import '../scripts/placeholder-dom.ts';
+</script>
+```
+
+`client:only="react"` indique à Astro d'hydrater le composant uniquement côté client (pas de SSR). La balise `<script>` importe le parcoureur du DOM afin qu'il s'exécute sur chaque page incluant ce wrapper.
+
+Le wrapper injecte également du CSS global pour la mise en forme du formulaire (`.ph-form-wrapper`, `.ph-grid`, `.ph-value`, etc.).
+
+## Parcoureur du DOM
+
+`src/scripts/placeholder-dom.ts` gère le remplacement des jetons côté client.
+
+### Parcours initial
+
+Au chargement de la page, `init()` s'exécute :
+
+1. Sélectionne `.sl-markdown-content` comme racine (se rabat sur `document.body`)
+2. Appelle `walkTextNodes(root, values)` qui utilise `document.createTreeWalker` avec `NodeFilter.SHOW_TEXT`
+3. Pour chaque nœud texte correspondant à l'expression régulière des jetons, le découpe en un fragment de document composé de nœuds texte simples et d'éléments `<span data-ph="KEY" class="ph-value">`
+4. Remplace le nœud texte original par le fragment
+
+Après le parcours, le DOM contient des spans avec des attributs `data-ph` au lieu des jetons bruts.
+
+### Mises à jour ultérieures
+
+Lorsque le formulaire émet un événement `placeholder-change`, `updateSpans()` s'exécute :
+
+```ts
+document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
+  const name = span.getAttribute('data-ph')!;
+  if (values[name] !== undefined) {
+    span.textContent = values[name];
+  }
+});
+```
+
+Cela évite de re-parcourir l'arbre — le contenu textuel des spans est mis à jour directement.
+
+### Écouteurs d'événements
+
+Le script enregistre deux écouteurs :
+
+| Événement | Gestionnaire | Rôle |
+|-----------|-------------|------|
+| `placeholder-change` | `handleChange` | Met à jour les spans et re-rend les diagrammes Mermaid |
+| `astro:page-load` | `init` | Re-parcourt le DOM après une navigation côté client Astro |
+
+## Procédure : Ajouter un nouveau placeholder
+
+1. **Ajouter l'entrée JSON** dans `src/data/placeholders.json` :
+   ```json
+   "MY_NEW_VALUE": {
+     "type": "text",
+     "default": "example",
+     "description": "Description shown in the form"
+   }
+   ```
+
+2. **Ajouter la clé à un groupe de champs** dans `src/lib/placeholder-store.ts`. Soit l'ajouter au tableau `keys` d'un groupe existant, soit créer un nouveau groupe dans `FIELD_GROUPS`.
+
+3. **Utiliser le jeton dans le contenu** : Écrire `xMY_NEW_VALUEx` dans n'importe quel fichier `.mdx`. Le parcoureur du DOM le remplacera au moment de l'exécution.
+
+## Procédure : Ajouter une valeur calculée
+
+Les valeurs calculées sont dérivées d'autres placeholders. Pour en ajouter une :
+
+1. Ajouter une table de correspondance (si nécessaire) dans `src/lib/placeholder-store.ts`, en suivant le patron de `cidrToMask`.
+
+2. Étendre `getComputedValues()` pour inclure la nouvelle clé dérivée :
+   ```ts
+   export function getComputedValues(values: Record<string, string>): Record<string, string> {
+     // ... logique existante
+     return {
+       PROTECTED_MASK_V4: mask,
+       PROTECTED_PREFIX_V4: `${net}${short}`,
+       MY_COMPUTED: derivedValue,  // ajouter ici
+     };
+   }
+   ```
+
+3. Utiliser `xMY_COMPUTEDx` dans le contenu comme tout autre jeton. Les valeurs calculées n'ont pas besoin d'une entrée dans `placeholders.json` ni d'un groupe de champs — elles sont invisibles pour le formulaire.

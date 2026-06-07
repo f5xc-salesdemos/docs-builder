@@ -1,0 +1,144 @@
+---
+title: CI/CD とガバナンス
+description: GitHub Actions ワークフロー、テンプレート同期、シークレット、およびブランチ保護。
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 3b4552f7ab42
+  translator: machine
+---
+
+リポジトリでは、4つの GitHub Actions ワークフローと集中管理型のテンプレートシステムをガバナンスに使用しています。
+
+## ワークフロー
+
+| ワークフロー | ファイル | トリガー | 目的 |
+|----------|------|---------|---------|
+| GitHub Pages デプロイ | `github-pages-deploy.yml` | `main` へのプッシュ（`docs/**`）、手動ディスパッチ | ドキュメントサイトをビルドし、GitHub Pages にデプロイする |
+| Docker イメージのビルドと公開 | `build-image.yml` | `main` へのプッシュ（`docker/**`、`package*.json`）、毎日の cron、`repository_dispatch` | Docker イメージをビルドし、GHCR にプッシュし、下流リポジトリにリビルドをディスパッチする |
+| リンクされた Issue の必須化 | `require-linked-issue.yml` | プルリクエストイベント | GitHub Issue を参照していない PR をブロックする |
+| リポジトリ設定の強制適用 | `enforce-repo-settings.yml` | 6時間ごと、設定ファイルへのプッシュ、手動ディスパッチ | テンプレートから標準化されたリポジトリ設定を適用する |
+
+### GitHub Pages デプロイ
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+```
+
+テンプレートリポジトリ内の再利用可能なワークフローに委譲します：
+
+```yaml
+jobs:
+  docs:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+```
+
+権限：`contents: read`、`packages: read`、`pages: write`、`id-token: write`。古いデプロイメントを回避するため、`cancel-in-progress: true` を指定した同時実行グループ `pages` を使用します。
+
+`docs/` 配下のファイルが変更された場合にのみプッシュ時にトリガーされます。`workflow_dispatch` を使用して手動でトリガーすることも可能で、これが `build-image.yml` 内のディスパッチジョブが下流のリビルドをトリガーする方法です。
+
+### Docker イメージのビルドと公開
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    - cron: '0 6 * * *'
+  repository_dispatch:
+    types: [rebuild-image]
+```
+
+ステップ：
+1. コードのチェックアウト
+2. `docker/login-action` を使用して `ghcr.io` にログイン
+3. `docker/build-push-action` を使用してコンテキスト `.` とファイル `docker/Dockerfile` でビルドおよびプッシュ
+4. タグ：`ghcr.io/<owner>/<repo>:latest` および `ghcr.io/<owner>/<repo>:<sha>`
+
+ビルドが成功した後、**ディスパッチ**ジョブがテンプレートリポジトリの `downstream-repos.json` 設定にリストされているすべての下流リポジトリに対して `workflow_dispatch` 経由で `github-pages-deploy.yml` をトリガーします。これにより、すべてのコンテンツリポジトリが更新されたビルダーイメージでドキュメントをリビルドすることが保証されます。
+
+毎日の cron により、コード変更がなくてもイメージが最新の状態に保たれます（依存関係の更新を取得します）。`repository_dispatch` イベントにより、外部システムからリビルドをトリガーできます。
+
+`docker/` ファイルまたは `package*.json` が変更された場合にのみプッシュ時にトリガーされます。ドキュメントのみの変更ではイメージのリビルドはトリガーされません。
+
+### リンクされた Issue の必須化
+
+```yaml
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+```
+
+`nearform-actions/github-action-check-linked-issues@v1` を使用して、すべての PR が GitHub Issue を参照していること（例：説明文に `Closes #42`）を強制します。Dependabot の PR は以下の設定により除外されます：
+
+```yaml
+exclude-branches: "dependabot/**"
+```
+
+チェックが失敗した場合、期待されるフォーマットをコントリビューターに伝えるカスタムメッセージが表示されます。完全なコントリビューターワークフローについては [CONTRIBUTING.md](../CONTRIBUTING.md) を参照してください。
+
+### リポジトリ設定の強制適用
+
+```yaml
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/config/repo-settings.json'
+  workflow_dispatch:
+```
+
+テンプレートリポジトリ内の再利用可能なワークフローに委譲します：
+
+```yaml
+jobs:
+  enforce:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    secrets:
+      repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
+```
+
+6時間ごとおよび設定ファイルの変更時に実行されます。`.github/config/repo-settings.json` からブランチ保護ルール、マージ設定、およびその他のリポジトリ設定を適用します。
+
+## ガバナンスモデル
+
+### 集中管理型テンプレート
+
+`f5xc-salesdemos/docs-control` リポジトリは、以下の唯一の信頼できる情報源です：
+
+- 再利用可能なワークフロー定義（ドキュメントデプロイ、リポジトリ設定の強制適用）
+- 組織内のすべてのリポジトリに同期されるマネージドファイル
+- 標準的な設定とブランチ保護ルール
+
+このビルダーおよびすべてのコンテンツリポジトリは、テンプレートから CI/CD の動作を継承します。
+
+### マネージドファイルの同期
+
+テンプレートリポジトリは、マネージドファイル（ワークフロー定義や設定ファイルなど）を下流リポジトリにプッシュできます。これにより、手動更新なしですべてのリポジトリの整合性が保たれます。同期はテンプレートリポジトリ内の別のワークフローを通じて実行されます。
+
+### ブランチ保護
+
+enforce-repo-settings ワークフローは、テンプレートからブランチ保護ルールを適用します。これには以下が含まれます：
+
+- マージ前の必須ステータスチェック
+- リンクされた Issue チェックの必須化
+- スカッシュマージの優先
+- マージ後のヘッドブランチの自動削除
+
+## シークレット
+
+| シークレット | ソース | 目的 |
+|--------|--------|---------|
+| `GITHUB_TOKEN` | 自動（GitHub） | ほとんどのワークフローでチェックアウト、パッケージの公開、API 呼び出しに使用される |
+| `REPO_ADMIN_TOKEN` | 手動（リポジトリシークレット） | enforce-repo-settings およびディスパッチジョブがブランチ保護やリポジトリ設定の変更、下流ワークフローのトリガーに必要（admin スコープが必要） |

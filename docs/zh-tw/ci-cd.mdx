@@ -1,0 +1,144 @@
+---
+title: CI/CD 與治理
+description: GitHub Actions 工作流程、範本同步、密鑰與分支保護。
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 3b4552f7ab42
+  translator: machine
+---
+
+此儲存庫使用四個 GitHub Actions 工作流程以及集中式範本系統進行治理。
+
+## 工作流程
+
+| 工作流程 | 檔案 | 觸發條件 | 用途 |
+|----------|------|---------|---------|
+| GitHub Pages 部署 | `github-pages-deploy.yml` | 推送至 `main`（`docs/**`）、手動觸發 | 建置並部署文件網站至 GitHub Pages |
+| 建置並發布 Docker 映像 | `build-image.yml` | 推送至 `main`（`docker/**`、`package*.json`）、每日排程、`repository_dispatch` | 建置 Docker 映像、推送至 GHCR，並觸發下游儲存庫重新建置 |
+| 要求關聯 Issue | `require-linked-issue.yml` | Pull request 事件 | 阻擋未參考 GitHub issue 的 PR |
+| 強制執行儲存庫設定 | `enforce-repo-settings.yml` | 每 6 小時、推送設定配置檔、手動觸發 | 從範本套用標準化的儲存庫設定 |
+
+### GitHub Pages 部署
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+```
+
+委派給範本儲存庫中的可重用工作流程：
+
+```yaml
+jobs:
+  docs:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+```
+
+權限：`contents: read`、`packages: read`、`pages: write`、`id-token: write`。使用並行群組 `pages` 並設定 `cancel-in-progress: true` 以避免過時的部署。
+
+僅在 `docs/` 下的檔案變更時於推送時觸發。也可透過 `workflow_dispatch` 手動觸發，`build-image.yml` 中的 dispatch 任務就是透過此方式觸發下游重新建置。
+
+### 建置並發布 Docker 映像
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    - cron: '0 6 * * *'
+  repository_dispatch:
+    types: [rebuild-image]
+```
+
+步驟：
+1. 檢出程式碼
+2. 使用 `docker/login-action` 登入 `ghcr.io`
+3. 使用 `docker/build-push-action` 建置並推送，context 為 `.`，檔案為 `docker/Dockerfile`
+4. 標籤：`ghcr.io/<owner>/<repo>:latest` 和 `ghcr.io/<owner>/<repo>:<sha>`
+
+建置成功後，**dispatch** 任務會透過 `workflow_dispatch` 在範本儲存庫的 `downstream-repos.json` 配置中列出的每個下游儲存庫上觸發 `github-pages-deploy.yml`。這確保所有內容儲存庫使用更新後的建置映像重新建置其文件。
+
+每日排程確保即使沒有程式碼變更，映像也能保持最新（取得依賴項更新）。`repository_dispatch` 事件允許外部系統觸發重新建置。
+
+僅在 `docker/` 檔案或 `package*.json` 變更時於推送時觸發。僅文件變更不會觸發映像重新建置。
+
+### 要求關聯 Issue
+
+```yaml
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+```
+
+使用 `nearform-actions/github-action-check-linked-issues@v1` 強制要求每個 PR 參考一個 GitHub issue（例如，在描述中包含 `Closes #42`）。Dependabot PR 透過以下設定排除：
+
+```yaml
+exclude-branches: "dependabot/**"
+```
+
+如果檢查失敗，會顯示自訂訊息告知貢獻者預期的格式。完整的貢獻者工作流程請參閱 [CONTRIBUTING.md](../CONTRIBUTING.md)。
+
+### 強制執行儲存庫設定
+
+```yaml
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/config/repo-settings.json'
+  workflow_dispatch:
+```
+
+委派給範本儲存庫中的可重用工作流程：
+
+```yaml
+jobs:
+  enforce:
+    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    secrets:
+      repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
+```
+
+每 6 小時執行一次，並在設定配置檔變更時觸發。從 `.github/config/repo-settings.json` 套用分支保護規則、合併設定及其他儲存庫配置。
+
+## 治理模型
+
+### 集中式範本
+
+`f5xc-salesdemos/docs-control` 儲存庫是以下項目的單一事實來源：
+
+- 可重用工作流程定義（文件部署、儲存庫設定強制執行）
+- 同步至組織中所有儲存庫的受管理檔案
+- 標準配置與分支保護規則
+
+此建置工具及所有內容儲存庫均從範本繼承其 CI/CD 行為。
+
+### 受管理檔案同步
+
+範本儲存庫可將受管理檔案（如工作流程定義和配置檔）推送至下游儲存庫。這使所有儲存庫保持一致，無需手動更新。同步透過範本儲存庫中的獨立工作流程執行。
+
+### 分支保護
+
+enforce-repo-settings 工作流程從範本套用分支保護規則，包括：
+
+- 合併前需通過必要的狀態檢查
+- 需要關聯 issue 檢查
+- 偏好使用壓縮合併（squash merge）
+- 合併後自動刪除來源分支
+
+## 密鑰
+
+| 密鑰 | 來源 | 用途 |
+|--------|--------|---------|
+| `GITHUB_TOKEN` | 自動（GitHub） | 大多數工作流程用於檢出、套件發布和 API 呼叫 |
+| `REPO_ADMIN_TOKEN` | 手動（儲存庫密鑰） | enforce-repo-settings 和 dispatch 任務修改分支保護、儲存庫設定及觸發下游工作流程所需（需要管理員範圍） |

@@ -1,0 +1,63 @@
+---
+title: Lokale Vorschau für Inhaltsautoren
+description: >-
+  Sehen Sie Ihre Dokumentation lokal mit einem einzigen Docker-Befehl in der
+  Vorschau.
+sidebar:
+  order: 7
+i18n:
+  sourceHash: d5ec9a607f67
+  translator: machine
+---
+
+Sehen Sie Ihre Dokumentation lokal in der Vorschau, bevor Sie Änderungen pushen. Alles, was Sie benötigen, ist Docker und ein `docs/`-Verzeichnis.
+
+## Voraussetzungen
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installiert und gestartet
+- Ihr Content-Repository lokal geklont mit einem `docs/`-Verzeichnis, das mindestens `index.mdx` enthält
+
+## Den Entwicklungsserver starten
+
+Führen Sie im Stammverzeichnis Ihres Content-Repositories folgenden Befehl aus:
+
+```sh
+docker run --rm -it \
+  -v "$(pwd)/docs:/content/docs" \
+  -p 4321:4321 \
+  -e MODE=dev \
+  ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+Öffnen Sie **http://localhost:4321**, sobald der Server gestartet ist.
+
+:::note
+Dateiänderungen auf Ihrem Host erfordern einen Neustart des Containers. Stoppen Sie ihn mit `Ctrl+C` und führen Sie den Befehl erneut aus, um Änderungen zu übernehmen.
+:::
+
+## Bilder und statische Assets
+
+Platzieren Sie Bilder in einem Unterverzeichnis wie `docs/images/`. Der Container erkennt diese automatisch — keine zusätzlichen Volume-Mounts erforderlich.
+
+Referenzieren Sie sie in Ihrem MDX mit einem root-relativen Pfad:
+
+```mdx
+![Architecture diagram](/images/architecture.png)
+```
+
+## Fehlerbehebung
+
+**Port bereits belegt** — Verwenden Sie einen anderen Host-Port: `-p 8080:4321`, und öffnen Sie dann `http://localhost:8080`.
+
+**Inhalte werden nicht angezeigt** — Überprüfen Sie, ob `docs/index.mdx` existiert. Prüfen Sie die Container-Ausgabe auf eine `ERROR: No content found`-Meldung.
+
+**Veraltetes Image** — Laden Sie die neueste Version herunter:
+
+```sh
+docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+```
+
+## Weiterführende Lektüre
+
+- [Docker Build](../docker/) — Image-Details, Umgebungsvariablen und Produktions-Builds
+- [Architektur](../architecture/) — Content-Injection-Modell und Theme-System-Design
