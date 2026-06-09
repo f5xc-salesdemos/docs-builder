@@ -1,7 +1,7 @@
 ---
 title: Anteprima locale per autori di contenuti
 description: >-
-  Visualizza in anteprima la tua documentazione in locale con un singolo comando
+  Visualizza un'anteprima della documentazione in locale con un singolo comando
   Docker.
 sidebar:
   order: 7
@@ -10,16 +10,16 @@ i18n:
   translator: machine
 ---
 
-Visualizza in anteprima la tua documentazione in locale prima di eseguire il push delle modifiche. Tutto ciò che ti serve è Docker e una directory `docs/`.
+Visualizza un'anteprima della documentazione in locale prima di eseguire il push delle modifiche. Tutto ciò che serve è Docker e una directory `docs/`.
 
 ## Prerequisiti
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installato e in esecuzione
-- Il tuo repository di contenuti clonato in locale con una directory `docs/` contenente almeno `index.mdx`
+- Il repository dei contenuti clonato in locale con una directory `docs/` contenente almeno `index.mdx`
 
 ## Avviare il server di sviluppo
 
-Dalla radice del tuo repository di contenuti, esegui:
+Dalla radice del repository dei contenuti, esegui:
 
 ```sh
 docker run --rm -it \
@@ -29,10 +29,10 @@ docker run --rm -it \
   ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-Apri **http://localhost:4321** una volta che il server è avviato.
+Apri **http://localhost:4321** una volta avviato il server.
 
 :::note
-Le modifiche ai file sul tuo host richiedono il riavvio del container. Fermalo con `Ctrl+C` e riesegui il comando per applicare le modifiche.
+Le modifiche ai file sull'host richiedono il riavvio del container. Arrestalo con `Ctrl+C` e riesegui il comando per applicare le modifiche.
 :::
 
 ## Immagini e risorse statiche
@@ -57,7 +57,7 @@ Fai riferimento ad esse nel tuo MDX con un percorso relativo alla radice:
 docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-## Ulteriori letture
+## Letture aggiuntive
 
 - [Docker Build](../docker/) — Dettagli sull'immagine, variabili d'ambiente e build di produzione
-- [Architecture](../architecture/) — Modello di iniezione dei contenuti e progettazione del sistema di temi
+- [Architettura](../architecture/) — Modello di iniezione dei contenuti e design del sistema di temi

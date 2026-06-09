@@ -1,6 +1,6 @@
 ---
 title: 架構
-description: 文件建置器的系統設計、目錄結構、主題系統與建置流程。
+description: 文件建構器的系統設計、目錄配置、主題系統與建構流程。
 sidebar:
   order: 5
 i18n:
@@ -8,17 +8,17 @@ i18n:
   translator: machine
 ---
 
-## 概覽
+## 概述
 
-文件建置器是一個容器化的 [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) 系統。內容儲存庫提供 Markdown/MDX 檔案；建置器提供框架、主題和建置邏輯。這兩個部分在 Docker 容器內的建置階段結合在一起。
+文件建構器是一個容器化的 [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) 系統。內容儲存庫提供 Markdown/MDX 檔案；建構器提供框架、主題和建構邏輯。這兩個部分在建構時於 Docker 容器內會合。
 
 ## 內容注入模型
 
-內容儲存庫將其文件保存在 `docs/` 目錄中。在建置階段，容器會將這些檔案複製到 `src/content/docs/`，供 Astro 的內容集合使用。
+內容儲存庫將文件保存在 `docs/` 目錄中。在建構時，容器會將這些檔案複製到 `src/content/docs/`，由 Astro 的內容集合機制將它們載入。
 
 ```
 content-repo/
-  docs/           ← 由內容團隊撰寫
+  docs/           ← 由內容團隊編寫
     index.mdx
     guide.mdx
 
@@ -26,31 +26,31 @@ docs-builder/
   src/content/docs/ ← 靜態時為空（.gitkeep）
 ```
 
-進入點腳本（`docker/entrypoint.sh`）執行複製作業：
+進入點腳本（`docker/entrypoint.sh`）執行複製操作：
 
 ```sh
 cp -r "$CONTENT_DIR"/* /app/src/content/docs/
 ```
 
-這意味著建置器儲存庫本身附帶的是一個空的 `src/content/docs/` 目錄。內容僅在建置階段出現。
+這意味著建構器儲存庫本身附帶一個空的 `src/content/docs/` 目錄。內容僅在建構時出現。
 
 ## 主題系統
 
-Starlight 主題以獨立的 npm 套件形式發布。`package.json` 使用 npm 別名將簡短名稱映射到有範圍的 registry 套件：
+Starlight 主題以獨立的 npm 套件形式發布。`package.json` 使用 npm 別名將簡短名稱對應到作用域 registry 套件：
 
 ```json
 "@f5xc-salesdemos/docs-theme": "^1.29.0"
 ```
 
-主題套件擁有 `astro.config.mjs`。在建置階段，進入點會將其複製到專案根目錄：
+主題套件擁有 `astro.config.mjs`。在建構時，進入點腳本會將其複製到專案根目錄：
 
 ```sh
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
-這使得配置保持集中化——內容儲存庫和建置器本身都不需要維護自己的 Astro 設定。
+這使配置保持集中管理 — 內容儲存庫和建構器本身都不需要維護各自的 Astro 配置。
 
-## 原始碼目錄結構
+## 原始碼目錄配置
 
 ```
 src/
@@ -61,7 +61,7 @@ src/
     docs/                        # 注入內容的掛載點
   content.config.ts              # Starlight 內容集合定義
   data/
-    placeholders.json            # 佔位符標記定義
+    placeholders.json            # 佔位符 token 定義
   lib/
     placeholder-store.ts         # 狀態管理：載入、儲存、計算、發送
   scripts/
@@ -82,11 +82,11 @@ export const collections = {
 };
 ```
 
-任何放置在 `src/content/docs/` 中的 `.md` 或 `.mdx` 檔案都會成為建置網站中的一個頁面。
+任何放置在 `src/content/docs/` 中的 `.md` 或 `.mdx` 檔案都會成為建構網站中的一個頁面。
 
-## 建置流程
+## 建構流程
 
-下圖展示了 Docker 容器執行時的端到端建置流程：
+以下圖表展示了 Docker 容器執行時的端到端建構流程：
 
 ```mermaid
 flowchart LR
@@ -100,13 +100,13 @@ flowchart LR
     H -->|cp| I[/output]
 ```
 
-## 建置階段與客戶端處理
+## 建構時處理 vs 客戶端處理
 
-| 關注點 | 時機 | 方式 |
+| 關注事項 | 時機 | 方式 |
 |---------|------|-----|
-| MDX → HTML | 建置階段 | Astro 編譯器 |
-| Mermaid 程式碼區塊 → 容器 div | 建置階段 | `remark-mermaid.mjs` 外掛程式（來自 `docs-theme`） |
-| 佔位符標記 → 互動式 span | 客戶端 | `placeholder-dom.ts` TreeWalker |
+| MDX → HTML | 建構時 | Astro 編譯器 |
+| Mermaid 程式碼區塊 → 容器 div | 建構時 | `remark-mermaid.mjs` 外掛（來自 `docs-theme`） |
+| 佔位符 token → 互動式 span | 客戶端 | `placeholder-dom.ts` TreeWalker |
 | Mermaid SVG 渲染 | 客戶端 | `placeholder-dom.ts` 中的 `mermaid` CDN 匯入 |
 | 佔位符表單狀態 | 客戶端 | `placeholder-store.ts` + localStorage |
 | Astro 頁面轉場 | 客戶端 | `astro:page-load` 事件監聽器 |

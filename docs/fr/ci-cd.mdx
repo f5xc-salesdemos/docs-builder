@@ -1,8 +1,8 @@
 ---
-title: CI/CD et Gouvernance
+title: CI/CD et gouvernance
 description: >-
-  Workflows GitHub Actions, synchronisation de templates, secrets et protection
-  des branches.
+  Workflows GitHub Actions, synchronisation de modèles, secrets et protection de
+  branches.
 sidebar:
   order: 6
 i18n:
@@ -10,16 +10,16 @@ i18n:
   translator: machine
 ---
 
-Le dépôt utilise quatre workflows GitHub Actions et un système de templates centralisé pour la gouvernance.
+Le dépôt utilise quatre workflows GitHub Actions et un système de modèles centralisé pour la gouvernance.
 
 ## Workflows
 
 | Workflow | Fichier | Déclencheur | Objectif |
 |----------|---------|-------------|----------|
 | GitHub Pages Deploy | `github-pages-deploy.yml` | Push sur `main` (`docs/**`), déclenchement manuel | Compile et déploie le site de documentation sur GitHub Pages |
-| Build and Publish Docker Image | `build-image.yml` | Push sur `main` (`docker/**`, `package*.json`), cron quotidien, `repository_dispatch` | Compile l'image Docker, la pousse sur GHCR et déclenche les reconstructions des dépôts en aval |
-| Require Linked Issue | `require-linked-issue.yml` | Événements de pull request | Bloque les PR qui ne référencent pas une issue GitHub |
-| Enforce Repository Settings | `enforce-repo-settings.yml` | Toutes les 6 heures, push sur la configuration des paramètres, déclenchement manuel | Applique les paramètres standardisés du dépôt à partir du template |
+| Build and Publish Docker Image | `build-image.yml` | Push sur `main` (`docker/**`, `package*.json`), cron quotidien, `repository_dispatch` | Compile l'image Docker, la pousse vers GHCR et déclenche les reconstructions dans les dépôts en aval |
+| Require Linked Issue | `require-linked-issue.yml` | Événements de pull request | Bloque les PRs qui ne référencent pas un ticket GitHub |
+| Enforce Repository Settings | `enforce-repo-settings.yml` | Toutes les 6 heures, push sur la configuration des paramètres, déclenchement manuel | Applique les paramètres standardisés du dépôt depuis le modèle |
 
 ### GitHub Pages Deploy
 
@@ -32,7 +32,7 @@ on:
   workflow_dispatch:
 ```
 
-Délègue à un workflow réutilisable dans le dépôt template :
+Délègue à un workflow réutilisable dans le dépôt de modèles :
 
 ```yaml
 jobs:
@@ -42,7 +42,7 @@ jobs:
 
 Permissions : `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Utilise le groupe de concurrence `pages` avec `cancel-in-progress: true` pour éviter les déploiements obsolètes.
 
-Se déclenche uniquement lors d'un push lorsque des fichiers sous `docs/` changent. Peut également être déclenché manuellement via `workflow_dispatch`, ce qui correspond à la méthode utilisée par le job de dispatch dans `build-image.yml` pour déclencher les reconstructions en aval.
+Ne se déclenche sur push que lorsque des fichiers sous `docs/` changent. Peut également être déclenché manuellement via `workflow_dispatch`, qui est la méthode utilisée par la tâche de dispatch dans `build-image.yml` pour déclencher les reconstructions en aval.
 
 ### Build and Publish Docker Image
 
@@ -62,15 +62,15 @@ on:
 
 Étapes :
 1. Checkout du code
-2. Connexion à `ghcr.io` via `docker/login-action`
-3. Compilation et push via `docker/build-push-action` avec le contexte `.` et le fichier `docker/Dockerfile`
+2. Connexion à `ghcr.io` en utilisant `docker/login-action`
+3. Compilation et push en utilisant `docker/build-push-action` avec le contexte `.` et le fichier `docker/Dockerfile`
 4. Tags : `ghcr.io/<owner>/<repo>:latest` et `ghcr.io/<owner>/<repo>:<sha>`
 
-Après une compilation réussie, le job **dispatch** déclenche `github-pages-deploy.yml` via `workflow_dispatch` sur chaque dépôt en aval listé dans la configuration `downstream-repos.json` du dépôt template. Cela garantit que tous les dépôts de contenu recompilent leur documentation avec l'image de compilation mise à jour.
+Après une compilation réussie, la tâche **dispatch** déclenche `github-pages-deploy.yml` via `workflow_dispatch` sur chaque dépôt en aval listé dans la configuration `downstream-repos.json` du dépôt de modèles. Cela garantit que tous les dépôts de contenu reconstruisent leur documentation avec l'image de compilation mise à jour.
 
-Le cron quotidien assure que l'image reste à jour même sans modifications du code (récupère les mises à jour des dépendances). L'événement `repository_dispatch` permet aux systèmes externes de déclencher une reconstruction.
+Le cron quotidien garantit que l'image reste à jour même sans modification du code (intègre les mises à jour de dépendances). L'événement `repository_dispatch` permet aux systèmes externes de déclencher une reconstruction.
 
-Se déclenche uniquement lors d'un push lorsque les fichiers `docker/` ou `package*.json` changent. Les modifications concernant uniquement la documentation ne déclenchent pas une reconstruction de l'image.
+Ne se déclenche sur push que lorsque les fichiers de `docker/` ou `package*.json` changent. Les modifications uniquement dans la documentation ne déclenchent pas de reconstruction d'image.
 
 ### Require Linked Issue
 
@@ -80,13 +80,13 @@ on:
     types: [opened, edited, reopened, synchronize]
 ```
 
-Utilise `nearform-actions/github-action-check-linked-issues@v1` pour imposer que chaque PR référence une issue GitHub (par exemple, `Closes #42` dans la description). Les PR de Dependabot sont exclues via :
+Utilise `nearform-actions/github-action-check-linked-issues@v1` pour imposer que chaque PR référence un ticket GitHub (par ex., `Closes #42` dans la description). Les PRs de Dependabot sont exclues via :
 
 ```yaml
 exclude-branches: "dependabot/**"
 ```
 
-Un message personnalisé indique aux contributeurs le format attendu si la vérification échoue. Consultez [CONTRIBUTING.md](../CONTRIBUTING.md) pour le workflow complet des contributeurs.
+Un message personnalisé indique aux contributeurs le format attendu si la vérification échoue. Consultez [CONTRIBUTING.md](../CONTRIBUTING.md) pour le workflow complet du contributeur.
 
 ### Enforce Repository Settings
 
@@ -101,7 +101,7 @@ on:
   workflow_dispatch:
 ```
 
-Délègue à un workflow réutilisable dans le dépôt template :
+Délègue à un workflow réutilisable dans le dépôt de modèles :
 
 ```yaml
 jobs:
@@ -111,36 +111,36 @@ jobs:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
 
-S'exécute toutes les 6 heures et lors des modifications du fichier de configuration des paramètres. Applique les règles de protection des branches, les paramètres de fusion et d'autres configurations du dépôt à partir de `.github/config/repo-settings.json`.
+S'exécute toutes les 6 heures et lors des modifications du fichier de configuration des paramètres. Applique les règles de protection de branches, les paramètres de fusion et d'autres configurations du dépôt depuis `.github/config/repo-settings.json`.
 
-## Modèle de Gouvernance
+## Modèle de gouvernance
 
-### Template Centralisé
+### Modèle centralisé
 
 Le dépôt `f5xc-salesdemos/docs-control` est la source unique de vérité pour :
 
-- Les définitions de workflows réutilisables (déploiement de la documentation, application des paramètres du dépôt)
+- Les définitions de workflows réutilisables (déploiement de documentation, application des paramètres du dépôt)
 - Les fichiers gérés synchronisés à travers tous les dépôts de l'organisation
-- Les configurations standard et les règles de protection des branches
+- Les configurations standard et les règles de protection de branches
 
-Ce builder et tous les dépôts de contenu héritent de leur comportement CI/CD à partir du template.
+Ce builder et tous les dépôts de contenu héritent leur comportement CI/CD du modèle.
 
-### Synchronisation des Fichiers Gérés
+### Synchronisation des fichiers gérés
 
-Le dépôt template peut pousser des fichiers gérés (comme les définitions de workflows et les fichiers de configuration) vers les dépôts en aval. Cela maintient tous les dépôts alignés sans mises à jour manuelles. La synchronisation s'exécute via un workflow distinct dans le dépôt template.
+Le dépôt de modèles peut pousser des fichiers gérés (comme les définitions de workflows et les fichiers de configuration) vers les dépôts en aval. Cela maintient tous les dépôts alignés sans mises à jour manuelles. La synchronisation s'exécute via un workflow séparé dans le dépôt de modèles.
 
-### Protection des Branches
+### Protection de branches
 
-Le workflow enforce-repo-settings applique les règles de protection des branches à partir du template, notamment :
+Le workflow enforce-repo-settings applique les règles de protection de branches depuis le modèle, notamment :
 
 - Vérifications de statut requises avant la fusion
-- Vérification obligatoire d'issue liée
-- Fusion par squash privilégiée
-- Suppression automatique des branches head après la fusion
+- Vérification de ticket lié requise
+- Fusion par squash préférée
+- Suppression automatique des branches sources après la fusion
 
 ## Secrets
 
 | Secret | Source | Objectif |
 |--------|--------|----------|
 | `GITHUB_TOKEN` | Automatique (GitHub) | Utilisé par la plupart des workflows pour le checkout, la publication de packages et les appels API |
-| `REPO_ADMIN_TOKEN` | Manuel (secret du dépôt) | Requis par enforce-repo-settings et le job de dispatch pour modifier la protection des branches, les paramètres du dépôt et déclencher les workflows en aval (nécessite le scope admin) |
+| `REPO_ADMIN_TOKEN` | Manuel (secret du dépôt) | Requis par enforce-repo-settings et la tâche de dispatch pour modifier la protection de branches, les paramètres du dépôt et déclencher les workflows en aval (nécessite la portée admin) |

@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-O sistema de placeholders permite que os leitores personalizem endereços IP, ASNs e outros valores específicos de implantação em toda a documentação. Os autores escrevem tokens em seus arquivos Markdown; o navegador os substitui por valores fornecidos pelo usuário em tempo de execução.
+O sistema de placeholders permite que os leitores personalizem endereços IP, ASNs e outros valores específicos de implantação ao longo da documentação. Os autores escrevem tokens em seus arquivos Markdown; o navegador os substitui por valores fornecidos pelo usuário em tempo de execução.
 
-## Formato de Token
+## Formato dos Tokens
 
-Os tokens seguem o padrão de regex:
+Os tokens seguem o padrão regex:
 
 ```
 x([A-Z][A-Z0-9_]+)x
@@ -44,7 +44,7 @@ Todos os placeholders são declarados em `src/data/placeholders.json`. Cada entr
 
 | Campo | Obrigatório | Descrição |
 |-------|-------------|-----------|
-| `type` | sim | `"text"` para entrada livre, `"dropdown"` para menus de seleção |
+| `type` | sim | `"text"` para entrada de texto livre, `"dropdown"` para menus de seleção |
 | `default` | sim | Valor inicial exibido antes de o leitor alterar qualquer coisa |
 | `description` | sim | Rótulo exibido no formulário |
 | `options` | apenas para dropdown | Array de valores permitidos |
@@ -66,7 +66,7 @@ Os valores são persistidos no `localStorage` sob a chave `f5xc-placeholders`. O
 
 ### Grupos de Campos
 
-`FIELD_GROUPS` organiza as chaves de placeholder em seções rotuladas para a interface do formulário:
+`FIELD_GROUPS` organiza as chaves dos placeholders em seções rotuladas para a interface do formulário:
 
 ```ts
 export const FIELD_GROUPS: FieldGroup[] = [
@@ -79,7 +79,7 @@ export const FIELD_GROUPS: FieldGroup[] = [
 
 ### Valores Computados
 
-Alguns valores são derivados da entrada do usuário em vez de serem inseridos diretamente. `getComputedValues()` calcula esses valores a partir de tabelas de consulta:
+Alguns valores são derivados da entrada do usuário em vez de inseridos diretamente. `getComputedValues()` calcula esses valores a partir de tabelas de consulta:
 
 ```ts
 const cidrToMask: Record<string, string> = {
@@ -91,9 +91,9 @@ const cidrToMask: Record<string, string> = {
 
 Dois placeholders computados são produzidos:
 
-| Chave Computada | Derivada De | Exemplo |
+| Chave Computada | Derivado De | Exemplo |
 |-----------------|-------------|---------|
-| `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` via consulta `cidrToMask` | `255.255.255.0` |
+| `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` via consulta em `cidrToMask` | `255.255.255.0` |
 | `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` via `cidrToShort` | `192.0.2.0/24` |
 
 `getAllValues()` mescla os valores inseridos pelo usuário com os valores computados, fornecendo um mapa completo para substituição.
@@ -110,7 +110,7 @@ export function emitChange(values: Record<string, string>) {
 }
 ```
 
-Este evento aciona tanto as atualizações dos spans no DOM quanto a re-renderização do Mermaid.
+Este evento aciona tanto as atualizações dos spans no DOM quanto a re-renderização dos diagramas Mermaid.
 
 ## Componente React do Formulário
 
@@ -121,7 +121,7 @@ Este evento aciona tanto as atualizações dos spans no DOM quanto a re-renderiz
 - **handleChange**: Atualiza o estado do React, chama `saveValues()` e `emitChange()`
 - **handleReset**: Chama `clearValues()`, redefine o estado para `getDefaults()`, emite a mudança
 - **Renderização**: Itera sobre `FIELD_GROUPS`, renderizando um `<fieldset>` por grupo. Cada chave recebe um `<input>` (tipo text) ou `<select>` (tipo dropdown)
-- **Layout**: O formulário é encapsulado em um elemento `<details>`, recolhido por padrão
+- **Layout**: O formulário é envolvido em um elemento `<details>`, recolhido por padrão
 
 ## Wrapper Astro
 
@@ -135,28 +135,28 @@ Este evento aciona tanto as atualizações dos spans no DOM quanto a re-renderiz
 </script>
 ```
 
-`client:only="react"` instrui o Astro a hidratar o componente exclusivamente no cliente (sem SSR). A tag `<script>` importa o DOM walker para que ele execute em cada página que inclua este wrapper.
+`client:only="react"` instrui o Astro a hidratar o componente puramente no cliente (sem SSR). A tag `<script>` importa o DOM walker para que ele seja executado em toda página que inclua este wrapper.
 
 O wrapper também injeta CSS global para estilização do formulário (`.ph-form-wrapper`, `.ph-grid`, `.ph-value`, etc.).
 
 ## DOM Walker
 
-`src/scripts/placeholder-dom.ts` lida com a substituição de tokens no lado do cliente.
+`src/scripts/placeholder-dom.ts` gerencia a substituição de tokens no lado do cliente.
 
-### Varredura Inicial
+### Caminhada Inicial
 
-No carregamento da página, `init()` executa:
+No carregamento da página, `init()` é executado:
 
 1. Seleciona `.sl-markdown-content` como raiz (recorre a `document.body` como fallback)
 2. Chama `walkTextNodes(root, values)` que utiliza `document.createTreeWalker` com `NodeFilter.SHOW_TEXT`
-3. Para cada nó de texto que corresponda ao regex de token, divide-o em um fragmento de documento contendo nós de texto simples e elementos `<span data-ph="KEY" class="ph-value">`
+3. Para cada nó de texto que corresponda ao regex do token, divide-o em um fragmento de documento contendo nós de texto simples e elementos `<span data-ph="KEY" class="ph-value">`
 4. Substitui o nó de texto original pelo fragmento
 
-Após a varredura, o DOM contém spans com atributos `data-ph` em vez de tokens brutos.
+Após a caminhada, o DOM contém spans com atributos `data-ph` em vez de tokens brutos.
 
 ### Atualizações Subsequentes
 
-Quando o formulário emite um evento `placeholder-change`, `updateSpans()` executa:
+Quando o formulário emite um evento `placeholder-change`, `updateSpans()` é executado:
 
 ```ts
 document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
@@ -167,16 +167,16 @@ document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
 });
 ```
 
-Isso evita re-varrer a árvore — atualiza diretamente o conteúdo de texto dos spans.
+Isso evita percorrer a árvore novamente — atualiza diretamente o conteúdo de texto dos spans.
 
-### Ouvintes de Eventos
+### Listeners de Eventos
 
-O script registra dois ouvintes:
+O script registra dois listeners:
 
 | Evento | Handler | Propósito |
 |--------|---------|-----------|
-| `placeholder-change` | `handleChange` | Atualiza os spans e re-renderiza diagramas Mermaid |
-| `astro:page-load` | `init` | Re-varre o DOM após navegação client-side do Astro |
+| `placeholder-change` | `handleChange` | Atualiza os spans e re-renderiza os diagramas Mermaid |
+| `astro:page-load` | `init` | Percorre novamente o DOM após a navegação client-side do Astro |
 
 ## Como Fazer: Adicionar um Novo Placeholder
 
@@ -191,7 +191,7 @@ O script registra dois ouvintes:
 
 2. **Adicione a chave a um grupo de campos** em `src/lib/placeholder-store.ts`. Adicione-a ao array `keys` de um grupo existente ou crie um novo grupo em `FIELD_GROUPS`.
 
-3. **Use o token no conteúdo**: Escreva `xMY_NEW_VALUEx` em qualquer arquivo `.mdx`. O DOM walker irá substituí-lo em tempo de execução.
+3. **Use o token no conteúdo**: Escreva `xMY_NEW_VALUEx` em qualquer arquivo `.mdx`. O DOM walker o substituirá em tempo de execução.
 
 ## Como Fazer: Adicionar um Valor Computado
 

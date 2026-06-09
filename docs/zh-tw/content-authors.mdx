@@ -13,7 +13,7 @@ i18n:
 ## 先決條件
 
 - 已安裝並執行 [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- 已在本機克隆您的內容儲存庫，且包含一個至少有 `index.mdx` 檔案的 `docs/` 目錄
+- 已在本機克隆您的內容儲存庫，且包含一個 `docs/` 目錄，其中至少有 `index.mdx`
 
 ## 啟動開發伺服器
 
@@ -30,14 +30,14 @@ docker run --rm -it \
 伺服器啟動後，開啟 **http://localhost:4321**。
 
 :::note
-在主機上修改檔案後需要重新啟動容器。使用 `Ctrl+C` 停止容器，然後重新執行命令以套用編輯內容。
+主機上的檔案變更需要重新啟動容器。使用 `Ctrl+C` 停止容器，然後重新執行命令以套用編輯。
 :::
 
 ## 圖片與靜態資源
 
-將圖片放置在子目錄中，例如 `docs/images/`。容器會自動偵測這些檔案——不需要額外的卷掛載。
+將圖片放置在子目錄中，例如 `docs/images/`。容器會自動偵測這些檔案，無需額外的卷掛載。
 
-在 MDX 中使用根相對路徑來引用它們：
+在您的 MDX 中使用根相對路徑來引用它們：
 
 ```mdx
 ![Architecture diagram](/images/architecture.png)
@@ -45,11 +45,11 @@ docker run --rm -it \
 
 ## 疑難排解
 
-**連接埠已被使用** — 對應到不同的主機連接埠：`-p 8080:4321`，然後開啟 `http://localhost:8080`。
+**連接埠已被使用** — 映射到不同的主機連接埠：`-p 8080:4321`，然後開啟 `http://localhost:8080`。
 
-**內容未顯示** — 確認 `docs/index.mdx` 存在。檢查容器輸出是否有 `ERROR: No content found` 訊息。
+**內容未顯示** — 確認 `docs/index.mdx` 存在。檢查容器輸出中是否有 `ERROR: No content found` 訊息。
 
-**映像檔過舊** — 拉取最新版本：
+**映像檔過期** — 拉取最新版本：
 
 ```sh
 docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
@@ -57,5 +57,5 @@ docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
 
 ## 延伸閱讀
 
-- [Docker 建置](../docker/) — 映像檔詳細資訊、環境變數與正式環境建置
+- [Docker 建置](../docker/) — 映像檔詳情、環境變數與正式環境建置
 - [架構](../architecture/) — 內容注入模型與主題系統設計

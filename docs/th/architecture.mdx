@@ -1,8 +1,8 @@
 ---
 title: สถาปัตยกรรม
 description: >-
-  การออกแบบระบบ, โครงสร้างไดเรกทอรี, ระบบธีม
-  และไปป์ไลน์การบิลด์สำหรับตัวสร้างเอกสาร
+  การออกแบบระบบ โครงสร้างไดเรกทอรี ระบบธีม และ pipeline การ build
+  สำหรับตัวสร้างเอกสาร
 sidebar:
   order: 5
 i18n:
@@ -12,11 +12,11 @@ i18n:
 
 ## ภาพรวม
 
-ตัวสร้างเอกสารเป็นระบบ [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) ที่ทำงานในคอนเทนเนอร์ รีโปเนื้อหาจะจัดเตรียมไฟล์ Markdown/MDX ส่วนตัวสร้างจะจัดเตรียมเฟรมเวิร์ก ธีม และลอจิกการบิลด์ ทั้งสองส่วนจะมาบรรจบกันในขั้นตอนการบิลด์ภายใน Docker คอนเทนเนอร์
+ตัวสร้างเอกสาร (docs builder) เป็นระบบ [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) ที่ทำงานในคอนเทนเนอร์ รีโปเนื้อหาจัดเตรียมไฟล์ Markdown/MDX ส่วนตัวสร้างจัดเตรียมเฟรมเวิร์ก ธีม และลอจิกการ build ทั้งสองส่วนมาพบกันในเวลา build ภายในคอนเทนเนอร์ Docker
 
-## โมเดลการฉีดเนื้อหา
+## โมเดลการนำเข้าเนื้อหา
 
-รีโปเนื้อหาจะเก็บเอกสารไว้ในไดเรกทอรี `docs/` ในขั้นตอนการบิลด์ คอนเทนเนอร์จะคัดลอกไฟล์เหล่านั้นไปยัง `src/content/docs/` ซึ่ง content collection ของ Astro จะรับไปประมวลผลต่อ
+รีโปเนื้อหาเก็บเอกสารไว้ในไดเรกทอรี `docs/` ในเวลา build คอนเทนเนอร์จะคัดลอกไฟล์เหล่านั้นไปยัง `src/content/docs/` ซึ่ง content collection ของ Astro จะนำไปใช้งาน
 
 ```
 content-repo/
@@ -25,32 +25,32 @@ content-repo/
     guide.mdx
 
 docs-builder/
-  src/content/docs/ ← ว่างเปล่าในสถานะปกติ (.gitkeep)
+  src/content/docs/ ← ว่างเปล่าในสภาวะปกติ (.gitkeep)
 ```
 
-สคริปต์ entrypoint (`docker/entrypoint.sh`) ทำหน้าที่คัดลอก:
+สคริปต์ entrypoint (`docker/entrypoint.sh`) ทำการคัดลอก:
 
 ```sh
 cp -r "$CONTENT_DIR"/* /app/src/content/docs/
 ```
 
-ซึ่งหมายความว่ารีโปของตัวสร้างจะส่งมอบพร้อมไดเรกทอรี `src/content/docs/` ที่ว่างเปล่า เนื้อหาจะปรากฏเฉพาะในขั้นตอนการบิลด์เท่านั้น
+ซึ่งหมายความว่ารีโปตัวสร้างจะมีไดเรกทอรี `src/content/docs/` ที่ว่างเปล่า เนื้อหาจะปรากฏเฉพาะในเวลา build เท่านั้น
 
 ## ระบบธีม
 
-ธีม Starlight ถูกเผยแพร่เป็นแพ็คเกจ npm แยกต่างหาก `package.json` ใช้ npm alias เพื่อแมปชื่อย่อไปยังแพ็คเกจในรีจิสทรีแบบมีขอบเขต:
+ธีม Starlight ถูกเผยแพร่เป็นแพ็กเกจ npm แยกต่างหาก `package.json` ใช้ npm alias เพื่อแมปชื่อย่อไปยังแพ็กเกจในรีจิสทรีที่กำหนดขอบเขต:
 
 ```json
 "@f5xc-salesdemos/docs-theme": "^1.29.0"
 ```
 
-แพ็คเกจธีมเป็นเจ้าของ `astro.config.mjs` ในขั้นตอนการบิลด์ entrypoint จะคัดลอกไฟล์นี้ไปยังรูทของโปรเจกต์:
+แพ็กเกจธีมเป็นเจ้าของ `astro.config.mjs` ในเวลา build สคริปต์ entrypoint จะคัดลอกไปยังรูทของโปรเจกต์:
 
 ```sh
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
-วิธีนี้ทำให้การกำหนดค่าอยู่ศูนย์กลาง — รีโปเนื้อหาและตัวสร้างเองไม่จำเป็นต้องดูแล Astro config ของตนเอง
+วิธีนี้ทำให้การกำหนดค่ารวมศูนย์อยู่ที่เดียว — รีโปเนื้อหาและตัวสร้างเองไม่ต้องดูแลไฟล์ Astro config ของตัวเอง
 
 ## โครงสร้างไดเรกทอรีซอร์สโค้ด
 
@@ -58,21 +58,21 @@ cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.con
 src/
   components/
     PlaceholderForm.tsx          # ฟอร์ม React สำหรับแก้ไขค่า placeholder
-    PlaceholderFormWrapper.astro # Astro wrapper, โหลดสคริปต์ DOM และ CSS ทั่วไป
+    PlaceholderFormWrapper.astro # Astro wrapper โหลดสคริปต์ DOM และ CSS ส่วนกลาง
   content/
-    docs/                        # จุดเมาท์สำหรับเนื้อหาที่ถูกฉีดเข้ามา
+    docs/                        # จุดเมาท์สำหรับเนื้อหาที่นำเข้า
   content.config.ts              # คำจำกัดความ content collection ของ Starlight
   data/
     placeholders.json            # คำจำกัดความโทเค็น placeholder
   lib/
-    placeholder-store.ts         # การจัดการสถานะ: โหลด, บันทึก, คำนวณ, ส่งเหตุการณ์
+    placeholder-store.ts         # การจัดการ state: โหลด บันทึก คำนวณ ส่งเหตุการณ์
   scripts/
-    placeholder-dom.ts           # DOM walker ฝั่งไคลเอนต์และตัวเรนเดอร์ Mermaid
+    placeholder-dom.ts           # DOM walker ฝั่งไคลเอนต์ และตัวเรนเดอร์ Mermaid
 ```
 
 ## Content Collection
 
-`src/content.config.ts` กำหนด collection `docs` เพียงรายการเดียวโดยใช้ loader และ schema ของ Starlight:
+`src/content.config.ts` กำหนดคอลเลกชัน `docs` เดียวโดยใช้ loader และ schema ของ Starlight:
 
 ```ts
 import { defineCollection } from 'astro:content';
@@ -84,11 +84,11 @@ export const collections = {
 };
 ```
 
-ไฟล์ `.md` หรือ `.mdx` ใดก็ตามที่อยู่ใน `src/content/docs/` จะกลายเป็นหน้าในเว็บไซต์ที่ถูกบิลด์
+ไฟล์ `.md` หรือ `.mdx` ใดๆ ที่วางไว้ใน `src/content/docs/` จะกลายเป็นหน้าหนึ่งในเว็บไซต์ที่ build แล้ว
 
-## ขั้นตอนการบิลด์
+## ขั้นตอนการ Build
 
-แผนภาพต่อไปนี้แสดงไปป์ไลน์การบิลด์แบบครบวงจรเมื่อ Docker คอนเทนเนอร์ทำงาน:
+แผนภาพต่อไปนี้แสดง pipeline การ build ตั้งแต่ต้นจนจบเมื่อคอนเทนเนอร์ Docker ทำงาน:
 
 ```mermaid
 flowchart LR
@@ -102,13 +102,13 @@ flowchart LR
     H -->|cp| I[/output]
 ```
 
-## การประมวลผลในขั้นตอนบิลด์ vs ขั้นตอนไคลเอนต์
+## การประมวลผลเวลา Build เทียบกับเวลาไคลเอนต์
 
-| ส่วนที่เกี่ยวข้อง | เมื่อใด | อย่างไร |
+| ข้อกังวล | เมื่อไหร่ | อย่างไร |
 |---------|------|-----|
-| MDX → HTML | ขั้นตอนบิลด์ | Astro compiler |
-| Mermaid code blocks → container divs | ขั้นตอนบิลด์ | ปลั๊กอิน `remark-mermaid.mjs` (จาก `docs-theme`) |
-| โทเค็น placeholder → span แบบโต้ตอบ | ขั้นตอนไคลเอนต์ | TreeWalker ใน `placeholder-dom.ts` |
-| การเรนเดอร์ Mermaid SVG | ขั้นตอนไคลเอนต์ | `mermaid` CDN import ใน `placeholder-dom.ts` |
-| สถานะฟอร์ม placeholder | ขั้นตอนไคลเอนต์ | `placeholder-store.ts` + localStorage |
-| Astro page transitions | ขั้นตอนไคลเอนต์ | ตัวรับฟังเหตุการณ์ `astro:page-load` |
+| MDX → HTML | เวลา build | คอมไพเลอร์ Astro |
+| บล็อกโค้ด Mermaid → container divs | เวลา build | ปลั๊กอิน `remark-mermaid.mjs` (จาก `docs-theme`) |
+| โทเค็น placeholder → span แบบโต้ตอบได้ | เวลาไคลเอนต์ | TreeWalker ของ `placeholder-dom.ts` |
+| การเรนเดอร์ Mermaid SVG | เวลาไคลเอนต์ | `mermaid` CDN import ใน `placeholder-dom.ts` |
+| state ของฟอร์ม placeholder | เวลาไคลเอนต์ | `placeholder-store.ts` + localStorage |
+| การเปลี่ยนหน้า Astro | เวลาไคลเอนต์ | event listener ของ `astro:page-load` |

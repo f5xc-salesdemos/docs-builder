@@ -1,6 +1,8 @@
 ---
 title: CI/CD und Governance
-description: 'GitHub Actions Workflows, Template-Synchronisation, Secrets und Branch-Schutz.'
+description: >-
+  GitHub Actions Workflows, Template-Synchronisierung, Secrets und
+  Branch-Schutz.
 sidebar:
   order: 6
 i18n:
@@ -15,7 +17,7 @@ Das Repository verwendet vier GitHub Actions Workflows und ein zentralisiertes T
 | Workflow | Datei | Auslöser | Zweck |
 |----------|-------|----------|-------|
 | GitHub Pages Deploy | `github-pages-deploy.yml` | Push auf `main` (`docs/**`), manueller Dispatch | Erstellt und veröffentlicht die Dokumentationsseite auf GitHub Pages |
-| Build and Publish Docker Image | `build-image.yml` | Push auf `main` (`docker/**`, `package*.json`), täglicher Cron, `repository_dispatch` | Erstellt das Docker-Image, pusht es zu GHCR und löst Rebuilds in nachgelagerten Repos aus |
+| Build and Publish Docker Image | `build-image.yml` | Push auf `main` (`docker/**`, `package*.json`), täglicher Cron, `repository_dispatch` | Erstellt das Docker-Image, pusht zu GHCR und löst Rebuilds in nachgelagerten Repos aus |
 | Require Linked Issue | `require-linked-issue.yml` | Pull-Request-Events | Blockiert PRs, die kein GitHub Issue referenzieren |
 | Enforce Repository Settings | `enforce-repo-settings.yml` | Alle 6 Stunden, Push auf Settings-Konfiguration, manueller Dispatch | Wendet standardisierte Repository-Einstellungen aus dem Template an |
 
@@ -40,7 +42,7 @@ jobs:
 
 Berechtigungen: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Verwendet die Concurrency-Gruppe `pages` mit `cancel-in-progress: true`, um veraltete Deployments zu vermeiden.
 
-Wird bei Push nur ausgelöst, wenn sich Dateien unter `docs/` ändern. Kann auch manuell über `workflow_dispatch` ausgelöst werden, was auch der Mechanismus ist, mit dem der Dispatch-Job in `build-image.yml` nachgelagerte Rebuilds auslöst.
+Wird nur bei Push ausgelöst, wenn sich Dateien unter `docs/` ändern. Kann auch manuell über `workflow_dispatch` ausgelöst werden – so löst der Dispatch-Job in `build-image.yml` nachgelagerte Rebuilds aus.
 
 ### Build and Publish Docker Image
 
@@ -60,15 +62,15 @@ on:
 
 Schritte:
 1. Code auschecken
-2. Bei `ghcr.io` anmelden mit `docker/login-action`
-3. Erstellen und pushen mit `docker/build-push-action` mit Kontext `.` und Datei `docker/Dockerfile`
+2. Anmeldung bei `ghcr.io` mittels `docker/login-action`
+3. Build und Push mittels `docker/build-push-action` mit Kontext `.` und Datei `docker/Dockerfile`
 4. Tags: `ghcr.io/<owner>/<repo>:latest` und `ghcr.io/<owner>/<repo>:<sha>`
 
-Nach einem erfolgreichen Build löst der **Dispatch**-Job `github-pages-deploy.yml` über `workflow_dispatch` in jedem nachgelagerten Repo aus, das in der `downstream-repos.json`-Konfiguration des Template-Repositorys aufgelistet ist. Dies stellt sicher, dass alle Content-Repos ihre Dokumentation mit dem aktualisierten Builder-Image neu erstellen.
+Nach einem erfolgreichen Build löst der **Dispatch**-Job `github-pages-deploy.yml` per `workflow_dispatch` in jedem nachgelagerten Repository aus, das in der `downstream-repos.json`-Konfiguration des Template-Repositories aufgeführt ist. Dadurch wird sichergestellt, dass alle Content-Repos ihre Dokumentation mit dem aktualisierten Builder-Image neu erstellen.
 
-Der tägliche Cron stellt sicher, dass das Image auch ohne Code-Änderungen aktuell bleibt (nimmt Dependency-Updates auf). Das `repository_dispatch`-Event ermöglicht es externen Systemen, einen Rebuild auszulösen.
+Der tägliche Cron stellt sicher, dass das Image auch ohne Code-Änderungen aktuell bleibt (erfasst Abhängigkeitsaktualisierungen). Das `repository_dispatch`-Event ermöglicht es externen Systemen, einen Rebuild auszulösen.
 
-Wird bei Push nur ausgelöst, wenn sich `docker/`-Dateien oder `package*.json` ändern. Reine Dokumentationsänderungen lösen keinen Image-Rebuild aus.
+Wird nur bei Push ausgelöst, wenn sich `docker/`-Dateien oder `package*.json` ändern. Reine Dokumentationsänderungen lösen keinen Image-Rebuild aus.
 
 ### Require Linked Issue
 
@@ -84,7 +86,7 @@ Verwendet `nearform-actions/github-action-check-linked-issues@v1`, um sicherzust
 exclude-branches: "dependabot/**"
 ```
 
-Eine benutzerdefinierte Nachricht informiert Mitwirkende über das erwartete Format, wenn die Prüfung fehlschlägt. Siehe [CONTRIBUTING.md](../CONTRIBUTING.md) für den vollständigen Workflow für Mitwirkende.
+Eine benutzerdefinierte Nachricht informiert Mitwirkende über das erwartete Format, wenn die Prüfung fehlschlägt. Siehe [CONTRIBUTING.md](../CONTRIBUTING.md) für den vollständigen Contributor-Workflow.
 
 ### Enforce Repository Settings
 
@@ -109,7 +111,7 @@ jobs:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
 
-Wird alle 6 Stunden und bei Änderungen an der Settings-Konfigurationsdatei ausgeführt. Wendet Branch-Schutzregeln, Merge-Einstellungen und andere Repository-Konfigurationen aus `.github/config/repo-settings.json` an.
+Läuft alle 6 Stunden und bei Änderungen an der Settings-Konfigurationsdatei. Wendet Branch-Schutzregeln, Merge-Einstellungen und andere Repository-Konfigurationen aus `.github/config/repo-settings.json` an.
 
 ## Governance-Modell
 
@@ -117,28 +119,28 @@ Wird alle 6 Stunden und bei Änderungen an der Settings-Konfigurationsdatei ausg
 
 Das Repository `f5xc-salesdemos/docs-control` ist die einzige Quelle der Wahrheit für:
 
-- Wiederverwendbare Workflow-Definitionen (Docs-Deployment, Repository-Settings-Durchsetzung)
+- Wiederverwendbare Workflow-Definitionen (Docs-Deploy, Repository-Settings-Durchsetzung)
 - Verwaltete Dateien, die über alle Repos in der Organisation synchronisiert werden
-- Standard-Konfigurationen und Branch-Schutzregeln
+- Standardkonfigurationen und Branch-Schutzregeln
 
 Dieser Builder und alle Content-Repos erben ihr CI/CD-Verhalten vom Template.
 
-### Synchronisation verwalteter Dateien
+### Synchronisierung verwalteter Dateien
 
-Das Template-Repository kann verwaltete Dateien (wie Workflow-Definitionen und Konfigurationsdateien) an nachgelagerte Repos pushen. Dies hält alle Repositories ohne manuelle Updates synchron. Die Synchronisation läuft über einen separaten Workflow im Template-Repository.
+Das Template-Repository kann verwaltete Dateien (wie Workflow-Definitionen und Konfigurationsdateien) an nachgelagerte Repos pushen. Dies hält alle Repositories ohne manuelle Aktualisierungen synchron. Die Synchronisierung läuft über einen separaten Workflow im Template-Repository.
 
 ### Branch-Schutz
 
-Der enforce-repo-settings Workflow wendet Branch-Schutzregeln aus dem Template an, darunter:
+Der Enforce-Repo-Settings-Workflow wendet Branch-Schutzregeln aus dem Template an, darunter:
 
 - Erforderliche Status-Checks vor dem Merge
 - Erforderliche Linked-Issue-Prüfung
-- Squash-Merge bevorzugt
+- Bevorzugter Squash-Merge
 - Automatisches Löschen von Head-Branches nach dem Merge
 
 ## Secrets
 
 | Secret | Quelle | Zweck |
 |--------|--------|-------|
-| `GITHUB_TOKEN` | Automatisch (GitHub) | Wird von den meisten Workflows für Checkout, Package-Publishing und API-Aufrufe verwendet |
-| `REPO_ADMIN_TOKEN` | Manuell (Repository-Secret) | Erforderlich für enforce-repo-settings und den Dispatch-Job zum Ändern von Branch-Schutz, Repository-Einstellungen und zum Auslösen nachgelagerter Workflows (benötigt Admin-Scope) |
+| `GITHUB_TOKEN` | Automatisch (GitHub) | Wird von den meisten Workflows für Checkout, Paketveröffentlichung und API-Aufrufe verwendet |
+| `REPO_ADMIN_TOKEN` | Manuell (Repository-Secret) | Erforderlich für Enforce-Repo-Settings und den Dispatch-Job zum Ändern von Branch-Schutz, Repository-Einstellungen und zum Auslösen nachgelagerter Workflows (benötigt Admin-Berechtigung) |

@@ -13,7 +13,7 @@ Pré-visualize seus documentos localmente antes de enviar as alterações. Tudo 
 ## Pré-requisitos
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado e em execução
-- Seu repositório de conteúdo clonado localmente com um diretório `docs/` contendo pelo menos o arquivo `index.mdx`
+- Seu repositório de conteúdo clonado localmente com um diretório `docs/` contendo pelo menos `index.mdx`
 
 ## Iniciar o Servidor de Desenvolvimento
 
@@ -30,12 +30,12 @@ docker run --rm -it \
 Abra **http://localhost:4321** assim que o servidor iniciar.
 
 :::note
-Alterações nos arquivos no seu host requerem a reinicialização do contêiner. Pare-o com `Ctrl+C` e execute o comando novamente para aplicar as edições.
+Alterações de arquivos no seu host requerem a reinicialização do container. Pare-o com `Ctrl+C` e execute o comando novamente para capturar as edições.
 :::
 
 ## Imagens e Recursos Estáticos
 
-Coloque as imagens em um subdiretório como `docs/images/`. O contêiner detecta esses arquivos automaticamente — nenhuma montagem de volume adicional é necessária.
+Coloque as imagens em um subdiretório como `docs/images/`. O container detecta esses arquivos automaticamente — nenhuma montagem de volume extra é necessária.
 
 Referencie-os no seu MDX com um caminho relativo à raiz:
 
@@ -47,7 +47,7 @@ Referencie-os no seu MDX com um caminho relativo à raiz:
 
 **Porta já em uso** — Mapeie para uma porta diferente no host: `-p 8080:4321`, e então abra `http://localhost:8080`.
 
-**Conteúdo não aparece** — Verifique se `docs/index.mdx` existe. Confira a saída do contêiner para uma mensagem `ERROR: No content found`.
+**Conteúdo não aparece** — Verifique se `docs/index.mdx` existe. Confira a saída do container para uma mensagem `ERROR: No content found`.
 
 **Imagem desatualizada** — Baixe a versão mais recente:
 
@@ -55,7 +55,7 @@ Referencie-os no seu MDX com um caminho relativo à raiz:
 docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-## Leitura Complementar
+## Leitura Adicional
 
 - [Docker Build](../docker/) — Detalhes da imagem, variáveis de ambiente e builds de produção
 - [Arquitetura](../architecture/) — Modelo de injeção de conteúdo e design do sistema de temas

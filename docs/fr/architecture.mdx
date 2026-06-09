@@ -1,7 +1,7 @@
 ---
 title: Architecture
 description: >-
-  Conception du système, arborescence des répertoires, système de thème et
+  Conception du système, organisation des répertoires, système de thème et
   pipeline de build pour le générateur de documentation.
 sidebar:
   order: 5
@@ -12,7 +12,7 @@ i18n:
 
 ## Vue d'ensemble
 
-Le générateur de documentation est un système conteneurisé basé sur [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/). Les dépôts de contenu fournissent des fichiers Markdown/MDX ; le générateur fournit le framework, le thème et la logique de build. Les deux parties se rejoignent au moment du build à l'intérieur d'un conteneur Docker.
+Le générateur de documentation est un système conteneurisé basé sur [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/). Les dépôts de contenu fournissent les fichiers Markdown/MDX ; le générateur fournit le framework, le thème et la logique de build. Les deux parties se rejoignent au moment du build à l'intérieur d'un conteneur Docker.
 
 ## Modèle d'injection de contenu
 
@@ -38,7 +38,7 @@ Cela signifie que le dépôt du générateur lui-même est livré avec un réper
 
 ## Système de thème
 
-Le thème Starlight est publié en tant que package npm séparé. `package.json` utilise un alias npm pour mapper un nom court vers le package du registre scopé :
+Le thème Starlight est publié en tant que package npm distinct. `package.json` utilise un alias npm pour mapper un nom court vers le package du registre scopé :
 
 ```json
 "@f5xc-salesdemos/docs-theme": "^1.29.0"
@@ -52,27 +52,27 @@ cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.con
 
 Cela permet de centraliser la configuration — les dépôts de contenu et le générateur lui-même ne maintiennent pas leur propre configuration Astro.
 
-## Arborescence du répertoire source
+## Organisation du répertoire source
 
 ```
 src/
   components/
-    PlaceholderForm.tsx          # Formulaire React pour éditer les valeurs des espaces réservés
+    PlaceholderForm.tsx          # Formulaire React pour l'édition des valeurs de substitution
     PlaceholderFormWrapper.astro # Wrapper Astro, charge le script DOM et le CSS global
   content/
     docs/                        # Point de montage pour le contenu injecté
   content.config.ts              # Définition de la collection de contenu Starlight
   data/
-    placeholders.json            # Définitions des jetons d'espaces réservés
+    placeholders.json            # Définitions des jetons de substitution
   lib/
-    placeholder-store.ts         # Gestion d'état : chargement, sauvegarde, calcul, émission
+    placeholder-store.ts         # Gestion d'état : charger, sauvegarder, calculer, émettre
   scripts/
-    placeholder-dom.ts           # Parcours du DOM côté client et rendu Mermaid
+    placeholder-dom.ts           # Parcours DOM côté client et rendu Mermaid
 ```
 
 ## Collection de contenu
 
-`src/content.config.ts` définit une seule collection `docs` utilisant le loader et le schéma de Starlight :
+`src/content.config.ts` définit une collection unique `docs` utilisant le loader et le schéma de Starlight :
 
 ```ts
 import { defineCollection } from 'astro:content';
@@ -84,11 +84,11 @@ export const collections = {
 };
 ```
 
-Tout fichier `.md` ou `.mdx` placé dans `src/content/docs/` devient une page du site généré.
+Tout fichier `.md` ou `.mdx` placé dans `src/content/docs/` devient une page dans le site généré.
 
 ## Flux de build
 
-Le diagramme suivant montre le pipeline de build de bout en bout lorsque le conteneur Docker s'exécute :
+Le diagramme suivant illustre le pipeline de build de bout en bout lorsque le conteneur Docker s'exécute :
 
 ```mermaid
 flowchart LR
@@ -104,11 +104,11 @@ flowchart LR
 
 ## Traitement au moment du build vs côté client
 
-| Aspect | Quand | Comment |
-|--------|-------|---------|
-| MDX → HTML | Moment du build | Compilateur Astro |
-| Blocs de code Mermaid → divs conteneurs | Moment du build | Plugin `remark-mermaid.mjs` (depuis `docs-theme`) |
-| Jetons d'espaces réservés → spans interactifs | Côté client | TreeWalker dans `placeholder-dom.ts` |
-| Rendu SVG Mermaid | Côté client | Import CDN `mermaid` dans `placeholder-dom.ts` |
-| État du formulaire d'espaces réservés | Côté client | `placeholder-store.ts` + localStorage |
-| Transitions de page Astro | Côté client | Écouteur d'événement `astro:page-load` |
+| Composant | Quand | Comment |
+|-----------|-------|---------|
+| MDX → HTML | Build | Compilateur Astro |
+| Blocs de code Mermaid → divs conteneurs | Build | Plugin `remark-mermaid.mjs` (depuis `docs-theme`) |
+| Jetons de substitution → spans interactifs | Client | TreeWalker dans `placeholder-dom.ts` |
+| Rendu SVG Mermaid | Client | Import CDN `mermaid` dans `placeholder-dom.ts` |
+| État du formulaire de substitution | Client | `placeholder-store.ts` + localStorage |
+| Transitions de page Astro | Client | Écouteur d'événement `astro:page-load` |

@@ -1,8 +1,8 @@
 ---
-title: Mermaid Diagrams
+title: ไดอะแกรม Mermaid
 description: >-
-  Remark plugin, client-side CDN rendering, placeholder substitution in
-  diagrams, and error handling.
+  ปลั๊กอิน Remark, การเรนเดอร์ฝั่งไคลเอนต์ผ่าน CDN, การแทนที่ placeholder
+  ในไดอะแกรม และการจัดการข้อผิดพลาด
 sidebar:
   order: 3
 i18n:
@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-ตัวสร้างรองรับไดอะแกรม [Mermaid](https://mermaid.js.org/) ด้วยการประมวลผลแบบสองเฟส: remark plugin ในเวลาบิลด์จะเตรียม markup และตัวเรนเดอร์ฝั่งไคลเอนต์จะสร้าง SVG
+ตัวบิลเดอร์รองรับไดอะแกรม [Mermaid](https://mermaid.js.org/) ด้วยการประมวลผลแบบสองเฟส: ปลั๊กอิน remark ในช่วงบิลด์จะเตรียมมาร์กอัป และตัวเรนเดอร์ฝั่งไคลเอนต์จะสร้าง SVG
 
-## Remark Plugin
+## ปลั๊กอิน Remark
 
-remark-mermaid plugin (จัดเตรียมโดยแพ็กเกจ npm `docs-theme`) ทำงานระหว่างการบิลด์ของ Astro โดยใช้ `unist-util-visit` เพื่อค้นหา fenced code blocks ที่มี `lang === 'mermaid'` และแทนที่ด้วย HTML:
+ปลั๊กอิน remark-mermaid (จัดเตรียมโดยแพ็กเกจ npm `docs-theme`) ทำงานระหว่างการบิลด์ Astro โดยใช้ `unist-util-visit` เพื่อค้นหาบล็อกโค้ดแบบ fenced ที่มี `lang === 'mermaid'` และแทนที่ด้วย HTML:
 
 ```js
 visit(tree, 'code', (node, index, parent) => {
@@ -40,9 +40,9 @@ visit(tree, 'code', (node, index, parent) => {
 | ด้าน | ค่า |
 |--------|-------|
 | ประเภทโหนดที่จับคู่ | โหนด `code` ที่ `lang === 'mermaid'` |
-| การ escape HTML entity | `&`, `<`, `>`, `"` — ป้องกันการ inject แอตทริบิวต์ใน `data-mermaid-src` |
-| โครงสร้างเอาต์พุต | `<div class="mermaid-container">` พร้อมแอตทริบิวต์ `data-mermaid-src` ที่เก็บซอร์สที่ถูก escape |
-| เนื้อหาสำรอง | `<pre class="mermaid">` พร้อมซอร์สดิบ (แสดงให้เห็นจนกว่า JS จะเรนเดอร์) |
+| การ escape HTML entity | `&`, `<`, `>`, `"` — ป้องกันการ injection ของ attribute ใน `data-mermaid-src` |
+| โครงสร้างผลลัพธ์ | `<div class="mermaid-container">` พร้อม attribute `data-mermaid-src` ที่เก็บซอร์สที่ escape แล้ว |
+| เนื้อหาสำรอง | `<pre class="mermaid">` พร้อมซอร์สดิบ (แสดงจนกว่า JS จะเรนเดอร์) |
 
 ## การเรนเดอร์ฝั่งไคลเอนต์
 
@@ -50,13 +50,13 @@ visit(tree, 'code', (node, index, parent) => {
 
 ### การนำเข้า Mermaid
 
-Mermaid ถูกโหลดตามความต้องการจาก CDN — ไม่ได้ถูกรวมเข้าไปในบันเดิล:
+Mermaid ถูกโหลดตามต้องการจาก CDN — ไม่ได้รวมอยู่ในบันเดิล:
 
 ```ts
 const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default;
 ```
 
-### การเริ่มต้น
+### การตั้งค่าเริ่มต้น
 
 ```ts
 mermaid.initialize({
@@ -74,32 +74,32 @@ mermaid.initialize({
 });
 ```
 
-`startOnLoad: false` ป้องกันไม่ให้ Mermaid สแกนหน้าโดยอัตโนมัติ `securityLevel: 'loose'` อนุญาตให้มี click events และลิงก์ในไดอะแกรม
+`startOnLoad: false` ป้องกัน Mermaid จากการสแกนหน้าเว็บโดยอัตโนมัติ `securityLevel: 'loose'` อนุญาตให้ใช้งานคลิกอีเวนต์และลิงก์ในไดอะแกรม
 
 ### ลูปการเรนเดอร์
 
-สำหรับแต่ละอิลิเมนต์ `.mermaid-container`:
+สำหรับแต่ละอีลิเมนต์ `.mermaid-container`:
 
 1. อ่านซอร์สไดอะแกรมดิบจาก `data-mermaid-src`
-2. ดำเนินการแทนที่ placeholder บนซอร์ส (ดูรายละเอียดด้านล่าง)
-3. ล้างคอนเทนเนอร์และลบแอตทริบิวต์ `data-processed` ออก
-4. เรียก `mermaid.render()` พร้อม ID แบบสุ่มเพื่อสร้าง SVG
-5. ตั้งค่า `backgroundColor: 'white'` บนอิลิเมนต์ `<svg>` ที่เรนเดอร์แล้ว
+2. รันการแทนที่ placeholder บนซอร์ส (ดูด้านล่าง)
+3. ล้างคอนเทนเนอร์และลบ attribute `data-processed` ออก
+4. เรียก `mermaid.render()` ด้วย ID แบบสุ่มเพื่อสร้าง SVG
+5. ตั้งค่า `backgroundColor: 'white'` บนอีลิเมนต์ `<svg>` ที่เรนเดอร์แล้ว
 
 ## การแทนที่ Placeholder ในไดอะแกรม
 
-ก่อนการเรนเดอร์ ซอร์สไดอะแกรมจะผ่านฟังก์ชัน `substituteText()` เดียวกันกับที่ใช้โดย DOM walker (ดู [ระบบ Placeholder](../placeholder-system/) สำหรับกลไก walker):
+ก่อนการเรนเดอร์ ซอร์สไดอะแกรมจะผ่านฟังก์ชัน `substituteText()` เดียวกันกับที่ DOM walker ใช้ (ดู [ระบบ Placeholder](../placeholder-system/) สำหรับกลไก walker):
 
 ```ts
 const template = container.getAttribute('data-mermaid-src') || '';
 const substituted = substituteText(template, values);
 ```
 
-หมายความว่า placeholder token เช่น `xCUSTOMER_ASNx` ทำงานได้ภายในคำจำกัดความไดอะแกรม Mermaid เมื่อผู้ใช้เปลี่ยนค่าในฟอร์ม เหตุการณ์ `placeholder-change` จะทริกเกอร์การเรนเดอร์ใหม่ทั้งหมดของไดอะแกรมทั้งหมดพร้อมค่าที่อัปเดต
+นั่นหมายความว่า placeholder token เช่น `xCUSTOMER_ASNx` ทำงานได้ภายในนิยามไดอะแกรม Mermaid เมื่อผู้ใช้เปลี่ยนค่าในฟอร์ม อีเวนต์ `placeholder-change` จะทริกเกอร์การเรนเดอร์ใหม่ทั้งหมดของไดอะแกรมทุกตัวด้วยค่าที่อัปเดตแล้ว
 
 ## การจัดการข้อผิดพลาด
 
-หาก `mermaid.render()` เกิดข้อผิดพลาด (เช่น เนื่องจาก syntax error ในซอร์สไดอะแกรม) บล็อก catch จะแสดงข้อผิดพลาดโดยตรงในคอนเทนเนอร์:
+หาก `mermaid.render()` โยนข้อผิดพลาด (เช่น เนื่องจากไวยากรณ์ผิดพลาดในซอร์สไดอะแกรม) บล็อก catch จะแสดงข้อผิดพลาดโดยตรงในคอนเทนเนอร์:
 
 ```ts
 } catch (e) {
@@ -107,20 +107,20 @@ const substituted = substituteText(template, values);
 }
 ```
 
-สิ่งนี้ทำให้ข้อผิดพลาดในการเขียนเนื้อหามองเห็นได้โดยไม่ทำให้ส่วนที่เหลือของหน้าเสียหาย
+สิ่งนี้ทำให้ข้อผิดพลาดในการเขียนมองเห็นได้โดยไม่ทำให้ส่วนอื่นของหน้าเว็บเสียหาย
 
-## การเรนเดอร์ใหม่
+## การเรนเดอร์ซ้ำ
 
-ไดอะแกรมจะเรนเดอร์ใหม่ในสองสถานการณ์:
+ไดอะแกรมจะเรนเดอร์ซ้ำในสองสถานการณ์:
 
-| ทริกเกอร์ | เหตุการณ์ | สิ่งที่เกิดขึ้น |
+| ตัวทริกเกอร์ | อีเวนต์ | สิ่งที่เกิดขึ้น |
 |---------|-------|-------------|
-| ค่า Placeholder เปลี่ยน | `placeholder-change` | `handleChange()` เรียก `renderMermaidDiagrams()` พร้อมค่าใหม่ |
-| การนำทางหน้า Astro | `astro:page-load` | `init()` เรียก `renderMermaidDiagrams()` สำหรับหน้าใหม่ |
+| ค่า placeholder เปลี่ยนแปลง | `placeholder-change` | `handleChange()` เรียก `renderMermaidDiagrams()` ด้วยค่าใหม่ |
+| การนำทางหน้าเว็บ Astro | `astro:page-load` | `init()` เรียก `renderMermaidDiagrams()` สำหรับหน้าใหม่ |
 
 ## ไวยากรณ์การเขียน
 
-เขียน fenced code block มาตรฐานพร้อมแท็กภาษา `mermaid`:
+เขียนบล็อกโค้ดแบบ fenced มาตรฐานด้วยแท็กภาษา `mermaid`:
 
 ````markdown
 ```mermaid
@@ -129,4 +129,4 @@ flowchart LR
 ```
 ````
 
-Remark plugin จะแปลงสิ่งนี้เป็น container div ในเวลาบิลด์ ไคลเอนต์จะเรนเดอร์เป็น SVG พร้อมค่า placeholder ที่ถูกแทนที่แล้ว
+ปลั๊กอิน remark จะแปลงสิ่งนี้เป็น div คอนเทนเนอร์ในช่วงบิลด์ ไคลเอนต์จะเรนเดอร์เป็น SVG โดยมีค่า placeholder ถูกแทนที่แล้ว

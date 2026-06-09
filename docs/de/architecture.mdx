@@ -12,11 +12,11 @@ i18n:
 
 ## Überblick
 
-Der Docs-Builder ist ein containerisiertes [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/)-System. Content-Repos stellen Markdown/MDX-Dateien bereit; der Builder liefert das Framework, das Theme und die Build-Logik. Die beiden Hälften treffen zur Build-Zeit innerhalb eines Docker-Containers aufeinander.
+Der Docs-Builder ist ein containerisiertes [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/)-System. Content-Repos stellen Markdown/MDX-Dateien bereit; der Builder liefert das Framework, das Theme und die Build-Logik. Die beiden Hälften kommen zur Build-Zeit innerhalb eines Docker-Containers zusammen.
 
 ## Content-Injection-Modell
 
-Content-Repos halten ihre Dokumentation in einem `docs/`-Verzeichnis. Zur Build-Zeit kopiert der Container diese Dateien nach `src/content/docs/`, wo Astros Content Collection sie aufnimmt.
+Content-Repos halten ihre Dokumentation in einem `docs/`-Verzeichnis. Zur Build-Zeit kopiert der Container diese Dateien nach `src/content/docs/`, wo Astros Content-Collection sie aufnimmt.
 
 ```
 content-repo/
@@ -28,7 +28,7 @@ docs-builder/
   src/content/docs/ ← im Ruhezustand leer (.gitkeep)
 ```
 
-Das Einstiegspunkt-Skript (`docker/entrypoint.sh`) führt die Kopie durch:
+Das Entrypoint-Skript (`docker/entrypoint.sh`) führt die Kopie durch:
 
 ```sh
 cp -r "$CONTENT_DIR"/* /app/src/content/docs/
@@ -38,13 +38,13 @@ Das bedeutet, dass das Builder-Repo selbst mit einem leeren `src/content/docs/`-
 
 ## Theme-System
 
-Das Starlight-Theme wird als separates npm-Paket veröffentlicht. Die `package.json` verwendet einen npm-Alias, um einen Kurznamen auf das Paket in der Scoped Registry abzubilden:
+Das Starlight-Theme wird als separates npm-Paket veröffentlicht. `package.json` verwendet einen npm-Alias, um einen Kurznamen auf das Paket in der Scoped-Registry abzubilden:
 
 ```json
 "@f5xc-salesdemos/docs-theme": "^1.29.0"
 ```
 
-Das Theme-Paket besitzt die `astro.config.mjs`. Zur Build-Zeit kopiert das Einstiegspunkt-Skript sie in das Projektstammverzeichnis:
+Das Theme-Paket besitzt `astro.config.mjs`. Zur Build-Zeit kopiert das Entrypoint-Skript diese Datei in das Projektstammverzeichnis:
 
 ```sh
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
@@ -70,7 +70,7 @@ src/
     placeholder-dom.ts           # Client-seitiger DOM-Walker und Mermaid-Renderer
 ```
 
-## Content Collection
+## Content-Collection
 
 `src/content.config.ts` definiert eine einzelne `docs`-Collection unter Verwendung von Starlights Loader und Schema:
 
@@ -84,7 +84,7 @@ export const collections = {
 };
 ```
 
-Jede `.md`- oder `.mdx`-Datei, die in `src/content/docs/` abgelegt wird, wird zu einer Seite in der gebauten Website.
+Jede `.md`- oder `.mdx`-Datei, die in `src/content/docs/` platziert wird, wird zu einer Seite in der gebauten Website.
 
 ## Build-Ablauf
 
@@ -92,13 +92,13 @@ Das folgende Diagramm zeigt die End-to-End-Build-Pipeline, wenn der Docker-Conta
 
 ```mermaid
 flowchart LR
-    A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
+    A[Content-Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
     B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
-    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    D[npm-Registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
     E -->|cp astro.config| F[astro.config.mjs]
     C --> G[astro build]
     F --> G
-    G --> H[dist/<br/>static HTML]
+    G --> H[dist/<br/>statisches HTML]
     H -->|cp| I[/output]
 ```
 
@@ -109,6 +109,6 @@ flowchart LR
 | MDX → HTML | Build-Zeit | Astro-Compiler |
 | Mermaid-Codeblöcke → Container-Divs | Build-Zeit | `remark-mermaid.mjs`-Plugin (aus `docs-theme`) |
 | Platzhalter-Tokens → interaktive Spans | Client-Zeit | `placeholder-dom.ts` TreeWalker |
-| Mermaid-SVG-Rendering | Client-Zeit | `mermaid` CDN-Import in `placeholder-dom.ts` |
+| Mermaid-SVG-Rendering | Client-Zeit | `mermaid`-CDN-Import in `placeholder-dom.ts` |
 | Platzhalter-Formular-Zustand | Client-Zeit | `placeholder-store.ts` + localStorage |
-| Astro-Seitenübergänge | Client-Zeit | `astro:page-load` Event-Listener |
+| Astro-Seitenübergänge | Client-Zeit | `astro:page-load`-Event-Listener |

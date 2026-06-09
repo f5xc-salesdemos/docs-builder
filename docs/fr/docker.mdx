@@ -1,8 +1,8 @@
 ---
-title: Docker Build
+title: Build Docker
 description: >-
-  Couches du Dockerfile, orchestration du point d'entrée, variables
-  d'environnement et utilisation locale.
+  Couches Dockerfile, orchestration du point d'entrée, variables d'environnement
+  et utilisation locale.
 sidebar:
   order: 4
 i18n:
@@ -40,9 +40,9 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 | Couche | Contenu | Pourquoi mise en cache séparément |
 |--------|---------|----------------------------------|
-| 1 | `COPY package*.json` + `npm ci` | Les dépendances changent rarement ; mettre cette couche en cache évite de tout retélécharger à chaque build |
+| 1 | `COPY package*.json` + `npm ci` | Les dépendances changent rarement ; mettre cette couche en cache évite de les re-télécharger à chaque build |
 | 2 | `COPY . .` | Code source du framework |
-| 3 | `rm -rf src/content/docs/*` | Nettoie tout contenu placeholder pour que seul le contenu injecté apparaisse |
+| 3 | `rm -rf src/content/docs/*` | Nettoie tout contenu de substitution afin que seul le contenu injecté apparaisse |
 | 4 | `COPY entrypoint.sh` | Script d'orchestration du build |
 
 ## Point d'entrée
@@ -78,7 +78,7 @@ else
 fi
 ```
 
-Copie le contenu monté dans le répertoire de collection de contenu d'Astro. Quitte avec une erreur si le répertoire de contenu est absent.
+Copie le contenu monté dans le répertoire de collection de contenu d'Astro. Sort avec une erreur si le répertoire de contenu est manquant.
 
 ### Étape 4 : Extraction du titre
 
@@ -132,7 +132,7 @@ Copie le site construit vers le point de montage de sortie.
 | `DOCS_SITE` | *(dérivé de `GITHUB_REPOSITORY_OWNER`)* | URL du site transmise à la configuration Astro (par exemple, `https://<owner>.github.io`) |
 | `GITHUB_REPOSITORY` | *(défini par GitHub Actions)* | Chaîne `owner/repo` utilisée pour dériver `DOCS_BASE` |
 | `GENERATE_PDF` | `false` | Active la génération PDF après le build |
-| `PDF_FILENAME` | `docs` | Nom du fichier de sortie pour le PDF généré |
+| `PDF_FILENAME` | `docs` | Nom de fichier de sortie pour le PDF généré |
 | `LLMS_OPTIONAL_LINKS` | `[]` | Tableau JSON d'URLs de sites enfants pour la section Optional de `llms.txt` |
 
 ## Utilisation locale
@@ -146,7 +146,7 @@ docker run --rm \
   ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-Cela monte le répertoire local `docs/` comme contenu et écrit le site construit dans `output/`.
+Ceci monte le répertoire local `docs/` comme contenu et écrit le site construit dans `output/`.
 
 Pour les auteurs de contenu souhaitant un workflow avec serveur de développement en direct, voir [Prévisualisation locale pour les auteurs de contenu](../content-authors/).
 
@@ -166,11 +166,11 @@ DOCS_TITLE="Dev Test" npx astro dev --host
 Ouvrez `http://localhost:4321`. Le remplacement de module à chaud (HMR) fonctionne pour les modifications de composants et de plugins.
 
 :::note
-`astro.config.mjs` et `content.config.ts` proviennent du package de thème et ne sont pas versionnés dans ce dépôt. Vous devez les copier depuis `node_modules` avant de lancer le serveur de développement. Le point d'entrée gère cela automatiquement dans les builds Docker.
+`astro.config.mjs` et `content.config.ts` proviennent du package de thème et ne sont pas versionnés dans ce dépôt. Vous devez les copier depuis `node_modules` avant d'exécuter le serveur de développement. Le point d'entrée gère cela automatiquement dans les builds Docker.
 :::
 
 :::note
-`src/content/docs/` est vidé au moment du build de l'image et est dans le gitignore. Placez-y du contenu de test manuellement — il ne sera pas commité.
+`src/content/docs/` est vidé au moment du build de l'image et ajouté au gitignore. Placez-y du contenu de test manuellement — il ne sera pas commité.
 :::
 
 ## Registre d'images
