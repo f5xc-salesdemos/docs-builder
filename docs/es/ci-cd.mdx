@@ -16,10 +16,10 @@ El repositorio utiliza cuatro flujos de trabajo de GitHub Actions y un sistema d
 
 | Flujo de trabajo | Archivo | Disparador | Propósito |
 |----------|------|---------|---------|
-| GitHub Pages Deploy | `github-pages-deploy.yml` | Push a `main` (`docs/**`), ejecución manual | Construye y despliega el sitio de documentación en GitHub Pages |
-| Build and Publish Docker Image | `build-image.yml` | Push a `main` (`docker/**`, `package*.json`), cron diario, `repository_dispatch` | Construye la imagen Docker, la publica en GHCR y envía reconstrucciones a los repositorios dependientes |
-| Require Linked Issue | `require-linked-issue.yml` | Eventos de pull request | Bloquea PRs que no referencian un issue de GitHub |
-| Enforce Repository Settings | `enforce-repo-settings.yml` | Cada 6 horas, push a la configuración de ajustes, ejecución manual | Aplica configuraciones estandarizadas del repositorio desde la plantilla |
+| GitHub Pages Deploy | `github-pages-deploy.yml` | Push a `main` (`docs/**`), despacho manual | Construye y despliega el sitio de documentación en GitHub Pages |
+| Build and Publish Docker Image | `build-image.yml` | Push a `main` (`docker/**`, `package*.json`), cron diario, `repository_dispatch` | Construye la imagen Docker, la publica en GHCR y despacha reconstrucciones a los repositorios dependientes |
+| Require Linked Issue | `require-linked-issue.yml` | Eventos de pull request | Bloquea los PRs que no referencian un issue de GitHub |
+| Enforce Repository Settings | `enforce-repo-settings.yml` | Cada 6 horas, push a la configuración de ajustes, despacho manual | Aplica la configuración estandarizada del repositorio desde la plantilla |
 
 ### GitHub Pages Deploy
 
@@ -42,7 +42,7 @@ jobs:
 
 Permisos: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Utiliza el grupo de concurrencia `pages` con `cancel-in-progress: true` para evitar despliegues obsoletos.
 
-Solo se activa en push cuando cambian archivos bajo `docs/`. También puede activarse manualmente mediante `workflow_dispatch`, que es como el trabajo de dispatch en `build-image.yml` activa las reconstrucciones en repositorios dependientes.
+Solo se activa en push cuando cambian archivos bajo `docs/`. También puede activarse manualmente mediante `workflow_dispatch`, que es como el trabajo de despacho en `build-image.yml` activa las reconstrucciones de los repositorios dependientes.
 
 ### Build and Publish Docker Image
 
@@ -66,7 +66,7 @@ Pasos:
 3. Construcción y publicación usando `docker/build-push-action` con contexto `.` y archivo `docker/Dockerfile`
 4. Etiquetas: `ghcr.io/<owner>/<repo>:latest` y `ghcr.io/<owner>/<repo>:<sha>`
 
-Después de una construcción exitosa, el trabajo de **dispatch** activa `github-pages-deploy.yml` mediante `workflow_dispatch` en cada repositorio dependiente listado en la configuración `downstream-repos.json` del repositorio de plantilla. Esto asegura que todos los repositorios de contenido reconstruyan su documentación con la imagen de construcción actualizada.
+Después de una construcción exitosa, el trabajo de **despacho** activa `github-pages-deploy.yml` mediante `workflow_dispatch` en cada repositorio dependiente listado en la configuración `downstream-repos.json` del repositorio de plantilla. Esto asegura que todos los repositorios de contenido reconstruyan su documentación con la imagen del constructor actualizada.
 
 El cron diario asegura que la imagen se mantenga actualizada incluso sin cambios en el código (recoge actualizaciones de dependencias). El evento `repository_dispatch` permite que sistemas externos activen una reconstrucción.
 
@@ -80,13 +80,13 @@ on:
     types: [opened, edited, reopened, synchronize]
 ```
 
-Utiliza `nearform-actions/github-action-check-linked-issues@v1` para exigir que cada PR referencie un issue de GitHub (por ejemplo, `Closes #42` en la descripción). Los PRs de Dependabot se excluyen mediante:
+Utiliza `nearform-actions/github-action-check-linked-issues@v1` para exigir que cada PR referencie un issue de GitHub (p. ej., `Closes #42` en la descripción). Los PRs de Dependabot se excluyen mediante:
 
 ```yaml
 exclude-branches: "dependabot/**"
 ```
 
-Un mensaje personalizado indica a los contribuidores el formato esperado si la verificación falla. Consulte [CONTRIBUTING.md](../CONTRIBUTING.md) para el flujo de trabajo completo del contribuidor.
+Un mensaje personalizado indica a los colaboradores el formato esperado si la verificación falla. Consulte [CONTRIBUTING.md](../CONTRIBUTING.md) para el flujo de trabajo completo del colaborador.
 
 ### Enforce Repository Settings
 
@@ -111,7 +111,7 @@ jobs:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
 
-Se ejecuta cada 6 horas y ante cambios en el archivo de configuración de ajustes. Aplica reglas de protección de ramas, configuraciones de merge y otras configuraciones del repositorio desde `.github/config/repo-settings.json`.
+Se ejecuta cada 6 horas y ante cambios en el archivo de configuración de ajustes. Aplica reglas de protección de ramas, configuración de fusión y otras configuraciones del repositorio desde `.github/config/repo-settings.json`.
 
 ## Modelo de Gobernanza
 
@@ -119,7 +119,7 @@ Se ejecuta cada 6 horas y ante cambios en el archivo de configuración de ajuste
 
 El repositorio `f5xc-salesdemos/docs-control` es la fuente única de verdad para:
 
-- Definiciones de flujos de trabajo reutilizables (despliegue de documentación, aplicación de configuraciones del repositorio)
+- Definiciones de flujos de trabajo reutilizables (despliegue de documentación, aplicación de configuración del repositorio)
 - Archivos gestionados sincronizados en todos los repositorios de la organización
 - Configuraciones estándar y reglas de protección de ramas
 
@@ -133,14 +133,14 @@ El repositorio de plantilla puede enviar archivos gestionados (como definiciones
 
 El flujo de trabajo enforce-repo-settings aplica reglas de protección de ramas desde la plantilla, incluyendo:
 
-- Verificaciones de estado requeridas antes del merge
+- Verificaciones de estado requeridas antes de la fusión
 - Verificación de issue vinculado requerida
-- Squash merge preferido
-- Eliminación automática de ramas head después del merge
+- Fusión squash preferida
+- Eliminación automática de ramas head después de la fusión
 
 ## Secretos
 
 | Secreto | Origen | Propósito |
 |--------|--------|---------|
 | `GITHUB_TOKEN` | Automático (GitHub) | Utilizado por la mayoría de los flujos de trabajo para checkout, publicación de paquetes y llamadas a la API |
-| `REPO_ADMIN_TOKEN` | Manual (secreto del repositorio) | Requerido por enforce-repo-settings y el trabajo de dispatch para modificar la protección de ramas, configuraciones del repositorio y activar flujos de trabajo en repositorios dependientes (necesita alcance de administrador) |
+| `REPO_ADMIN_TOKEN` | Manual (secreto del repositorio) | Requerido por enforce-repo-settings y el trabajo de despacho para modificar la protección de ramas, configuración del repositorio y activar flujos de trabajo en repositorios dependientes (necesita alcance de administrador) |

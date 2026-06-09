@@ -1,8 +1,8 @@
 ---
 title: Platzhalter-System
 description: >-
-  Token-Format, Zustandsverwaltung, DOM-Walker, berechnete Werte und wie neue
-  Platzhalter hinzugefügt werden.
+  Token-Format, Zustandsverwaltung, DOM-Walker, berechnete Werte und wie man
+  neue Platzhalter hinzufügt.
 sidebar:
   order: 2
 i18n:
@@ -10,7 +10,7 @@ i18n:
   translator: machine
 ---
 
-Das Platzhalter-System ermöglicht es Lesern, IP-Adressen, ASNs und andere bereitstellungsspezifische Werte in der gesamten Dokumentation anzupassen. Autoren schreiben Tokens in ihrem Markdown; der Browser ersetzt diese zur Laufzeit durch vom Benutzer eingegebene Werte.
+Das Platzhalter-System ermöglicht es Lesern, IP-Adressen, ASNs und andere bereitstellungsspezifische Werte in der gesamten Dokumentation anzupassen. Autoren schreiben Tokens in ihrem Markdown; der Browser ersetzt diese zur Laufzeit durch benutzerdefinierte Werte.
 
 ## Token-Format
 
@@ -20,7 +20,7 @@ Tokens folgen dem Regex-Muster:
 x([A-Z][A-Z0-9_]+)x
 ```
 
-Ein Token beginnt und endet mit einem Kleinbuchstaben `x` und enthält einen Bezeichner in Großbuchstaben. Zum Beispiel referenziert `xCUSTOMER_ASNx` den Platzhalter `CUSTOMER_ASN`.
+Ein Token beginnt und endet mit einem kleingeschriebenen `x` und enthält einen Bezeichner in Großbuchstaben. Zum Beispiel referenziert `xCUSTOMER_ASNx` den Platzhalter `CUSTOMER_ASN`.
 
 Der reguläre Ausdruck ist in `src/scripts/placeholder-dom.ts` definiert:
 
@@ -43,10 +43,10 @@ Alle Platzhalter werden in `src/data/placeholders.json` deklariert. Jeder Eintra
 ```
 
 | Feld | Erforderlich | Beschreibung |
-|------|-------------|--------------|
-| `type` | ja | `"text"` für Freitexteingabe, `"dropdown"` für Auswahlmenüs |
+|------|-------------|-------------|
+| `type` | ja | `"text"` für Freitext-Eingabe, `"dropdown"` für Auswahlmenüs |
 | `default` | ja | Anfangswert, der angezeigt wird, bevor der Leser etwas ändert |
-| `description` | ja | Bezeichnung, die im Formular angezeigt wird |
+| `description` | ja | Beschriftung, die im Formular angezeigt wird |
 | `options` | nur für Dropdown | Array der zulässigen Werte |
 
 ## Zustandsverwaltung
@@ -66,7 +66,7 @@ Werte werden im `localStorage` unter dem Schlüssel `f5xc-placeholders` persisti
 
 ### Feldgruppen
 
-`FIELD_GROUPS` organisiert die Platzhalter-Schlüssel in beschriftete Abschnitte für die Formular-Benutzeroberfläche:
+`FIELD_GROUPS` organisiert Platzhalter-Schlüssel in beschriftete Abschnitte für die Formular-Oberfläche:
 
 ```ts
 export const FIELD_GROUPS: FieldGroup[] = [
@@ -89,18 +89,18 @@ const cidrToMask: Record<string, string> = {
 };
 ```
 
-Es werden zwei berechnete Platzhalter erzeugt:
+Zwei berechnete Platzhalter werden erzeugt:
 
 | Berechneter Schlüssel | Abgeleitet von | Beispiel |
-|----------------------|----------------|----------|
+|----------------------|----------------|---------|
 | `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` über `cidrToMask`-Nachschlagetabelle | `255.255.255.0` |
 | `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` über `cidrToShort` | `192.0.2.0/24` |
 
-`getAllValues()` führt vom Benutzer eingegebene Werte mit berechneten Werten zusammen und liefert eine vollständige Map für die Substitution.
+`getAllValues()` führt benutzerdefinierte Werte mit berechneten Werten zusammen und liefert eine vollständige Map für die Ersetzung.
 
-### Ereignisauslösung
+### Ereignis-Auslösung
 
-`emitChange()` löst ein `placeholder-change` CustomEvent auf `document` aus, wobei die vollständige Werte-Map als `detail` übergeben wird:
+`emitChange()` sendet ein `placeholder-change` CustomEvent auf `document` mit der vollständigen Werte-Map als `detail`:
 
 ```ts
 export function emitChange(values: Record<string, string>) {
@@ -110,18 +110,18 @@ export function emitChange(values: Record<string, string>) {
 }
 ```
 
-Dieses Ereignis steuert sowohl die DOM-Span-Aktualisierungen als auch das erneute Rendern von Mermaid-Diagrammen.
+Dieses Ereignis steuert sowohl die DOM-Span-Aktualisierungen als auch das Mermaid-Neurendering.
 
 ## React-Formularkomponente
 
 `src/components/PlaceholderForm.tsx` stellt die Bearbeitungsoberfläche bereit.
 
-- **Zustand**: `useState` wird mit `loadValues()` initialisiert
-- **Beim Mounten**: `useEffect` ruft `emitChange()` auf, um die initiale DOM-Substitution auszulösen
+- **Zustand**: `useState` initialisiert mit `loadValues()`
+- **Beim Einbinden**: `useEffect` ruft `emitChange()` auf, um die initiale DOM-Ersetzung auszulösen
 - **handleChange**: Aktualisiert den React-Zustand, ruft `saveValues()` und `emitChange()` auf
-- **handleReset**: Ruft `clearValues()` auf, setzt den Zustand auf `getDefaults()` zurück und löst ein Change-Ereignis aus
-- **Rendering**: Iteriert über `FIELD_GROUPS` und rendert ein `<fieldset>` pro Gruppe. Jeder Schlüssel erhält entweder ein `<input>` (Text-Typ) oder ein `<select>` (Dropdown-Typ)
-- **Layout**: Das Formular ist in ein `<details>`-Element eingebettet, das standardmäßig eingeklappt ist
+- **handleReset**: Ruft `clearValues()` auf, setzt den Zustand auf `getDefaults()` zurück, löst ein Change-Ereignis aus
+- **Rendering**: Iteriert über `FIELD_GROUPS` und rendert ein `<fieldset>` pro Gruppe. Jeder Schlüssel erhält entweder ein `<input>` (Typ Text) oder ein `<select>` (Typ Dropdown)
+- **Layout**: Das Formular ist in ein `<details>`-Element eingebettet, standardmäßig eingeklappt
 
 ## Astro-Wrapper
 
@@ -135,9 +135,9 @@ Dieses Ereignis steuert sowohl die DOM-Span-Aktualisierungen als auch das erneut
 </script>
 ```
 
-`client:only="react"` weist Astro an, die Komponente ausschließlich auf dem Client zu hydrieren (kein SSR). Das `<script>`-Tag importiert den DOM-Walker, damit er auf jeder Seite ausgeführt wird, die diesen Wrapper einbindet.
+`client:only="react"` weist Astro an, die Komponente ausschließlich auf dem Client zu hydrieren (kein SSR). Das `<script>`-Tag importiert den DOM-Walker, damit dieser auf jeder Seite ausgeführt wird, die diesen Wrapper einbindet.
 
-Der Wrapper injiziert außerdem globales CSS für die Formulargestaltung (`.ph-form-wrapper`, `.ph-grid`, `.ph-value`, usw.).
+Der Wrapper injiziert außerdem globales CSS für das Formular-Styling (`.ph-form-wrapper`, `.ph-grid`, `.ph-value` usw.).
 
 ## DOM-Walker
 
@@ -145,7 +145,7 @@ Der Wrapper injiziert außerdem globales CSS für die Formulargestaltung (`.ph-f
 
 ### Initialer Durchlauf
 
-Beim Seitenladung wird `init()` ausgeführt:
+Beim Laden der Seite wird `init()` ausgeführt:
 
 1. Wählt `.sl-markdown-content` als Wurzelelement (fällt auf `document.body` zurück)
 2. Ruft `walkTextNodes(root, values)` auf, das `document.createTreeWalker` mit `NodeFilter.SHOW_TEXT` verwendet
@@ -176,9 +176,9 @@ Das Skript registriert zwei Listener:
 | Ereignis | Handler | Zweck |
 |----------|---------|-------|
 | `placeholder-change` | `handleChange` | Aktualisiert Spans und rendert Mermaid-Diagramme neu |
-| `astro:page-load` | `init` | Durchläuft das DOM erneut nach einer clientseitigen Astro-Navigation |
+| `astro:page-load` | `init` | Durchläuft das DOM erneut nach clientseitiger Astro-Navigation |
 
-## Anleitung: Neuen Platzhalter hinzufügen
+## Anleitung: Einen neuen Platzhalter hinzufügen
 
 1. **JSON-Eintrag hinzufügen** in `src/data/placeholders.json`:
    ```json
@@ -189,13 +189,13 @@ Das Skript registriert zwei Listener:
    }
    ```
 
-2. **Den Schlüssel einer Feldgruppe zuordnen** in `src/lib/placeholder-store.ts`. Fügen Sie ihn entweder zum `keys`-Array einer bestehenden Gruppe hinzu oder erstellen Sie eine neue Gruppe in `FIELD_GROUPS`.
+2. **Den Schlüssel einer Feldgruppe zuordnen** in `src/lib/placeholder-store.ts`. Fügen Sie ihn entweder dem `keys`-Array einer bestehenden Gruppe hinzu oder erstellen Sie eine neue Gruppe in `FIELD_GROUPS`.
 
-3. **Das Token im Inhalt verwenden**: Schreiben Sie `xMY_NEW_VALUEx` in einer beliebigen `.mdx`-Datei. Der DOM-Walker wird es zur Laufzeit ersetzen.
+3. **Das Token im Inhalt verwenden**: Schreiben Sie `xMY_NEW_VALUEx` in einer beliebigen `.mdx`-Datei. Der DOM-Walker ersetzt es zur Laufzeit.
 
-## Anleitung: Berechneten Wert hinzufügen
+## Anleitung: Einen berechneten Wert hinzufügen
 
-Berechnete Werte werden von anderen Platzhaltern abgeleitet. So fügen Sie einen hinzu:
+Berechnete Werte werden aus anderen Platzhaltern abgeleitet. Um einen hinzuzufügen:
 
 1. Fügen Sie eine Nachschlagetabelle (falls erforderlich) in `src/lib/placeholder-store.ts` hinzu, nach dem Muster von `cidrToMask`.
 

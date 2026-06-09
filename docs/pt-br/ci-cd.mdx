@@ -10,7 +10,7 @@ i18n:
   translator: machine
 ---
 
-O repositório utiliza quatro workflows do GitHub Actions e um sistema centralizado de templates para governança.
+O repositório utiliza quatro workflows do GitHub Actions e um sistema de templates centralizado para governança.
 
 ## Workflows
 
@@ -19,7 +19,7 @@ O repositório utiliza quatro workflows do GitHub Actions e um sistema centraliz
 | GitHub Pages Deploy | `github-pages-deploy.yml` | Push para `main` (`docs/**`), dispatch manual | Compila e implanta o site de documentação no GitHub Pages |
 | Build and Publish Docker Image | `build-image.yml` | Push para `main` (`docker/**`, `package*.json`), cron diário, `repository_dispatch` | Compila a imagem Docker, envia para o GHCR e dispara rebuilds nos repositórios downstream |
 | Require Linked Issue | `require-linked-issue.yml` | Eventos de pull request | Bloqueia PRs que não referenciam uma issue do GitHub |
-| Enforce Repository Settings | `enforce-repo-settings.yml` | A cada 6 horas, push na configuração de settings, dispatch manual | Aplica configurações padronizadas do repositório a partir do template |
+| Enforce Repository Settings | `enforce-repo-settings.yml` | A cada 6 horas, push nas configurações, dispatch manual | Aplica configurações padronizadas do repositório a partir do template |
 
 ### GitHub Pages Deploy
 
@@ -40,9 +40,9 @@ jobs:
     uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
-Permissões: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Utiliza o grupo de concorrência `pages` com `cancel-in-progress: true` para evitar implantações desatualizadas.
+Permissões: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Utiliza grupo de concorrência `pages` com `cancel-in-progress: true` para evitar implantações obsoletas.
 
-Só é acionado no push quando arquivos em `docs/` são alterados. Também pode ser acionado manualmente via `workflow_dispatch`, que é como o job de dispatch em `build-image.yml` aciona rebuilds nos repositórios downstream.
+Só é acionado no push quando arquivos em `docs/` são alterados. Também pode ser acionado manualmente via `workflow_dispatch`, que é como o job de dispatch em `build-image.yml` aciona os rebuilds downstream.
 
 ### Build and Publish Docker Image
 
@@ -66,11 +66,11 @@ Etapas:
 3. Build e push usando `docker/build-push-action` com contexto `.` e arquivo `docker/Dockerfile`
 4. Tags: `ghcr.io/<owner>/<repo>:latest` e `ghcr.io/<owner>/<repo>:<sha>`
 
-Após um build bem-sucedido, o job de **dispatch** aciona `github-pages-deploy.yml` via `workflow_dispatch` em cada repositório downstream listado na configuração `downstream-repos.json` do repositório de template. Isso garante que todos os repositórios de conteúdo recompilam sua documentação com a imagem de builder atualizada.
+Após um build bem-sucedido, o job de **dispatch** aciona `github-pages-deploy.yml` via `workflow_dispatch` em cada repositório downstream listado no arquivo `downstream-repos.json` do repositório de template. Isso garante que todos os repositórios de conteúdo reconstruam sua documentação com a imagem de builder atualizada.
 
 O cron diário garante que a imagem permaneça atualizada mesmo sem alterações no código (captura atualizações de dependências). O evento `repository_dispatch` permite que sistemas externos acionem um rebuild.
 
-Só é acionado no push quando arquivos em `docker/` ou `package*.json` são alterados. Alterações somente na documentação não acionam um rebuild da imagem.
+Só é acionado no push quando arquivos em `docker/` ou `package*.json` são alterados. Alterações apenas na documentação não acionam um rebuild da imagem.
 
 ### Require Linked Issue
 
@@ -80,7 +80,7 @@ on:
     types: [opened, edited, reopened, synchronize]
 ```
 
-Utiliza `nearform-actions/github-action-check-linked-issues@v1` para garantir que cada PR referencie uma issue do GitHub (por exemplo, `Closes #42` na descrição). PRs do Dependabot são excluídos via:
+Utiliza `nearform-actions/github-action-check-linked-issues@v1` para garantir que cada PR referencie uma issue do GitHub (ex.: `Closes #42` na descrição). PRs do Dependabot são excluídos via:
 
 ```yaml
 exclude-branches: "dependabot/**"
@@ -111,7 +111,7 @@ jobs:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
 
-Executa a cada 6 horas e em alterações no arquivo de configuração de settings. Aplica regras de proteção de branch, configurações de merge e outras configurações do repositório a partir de `.github/config/repo-settings.json`.
+Executa a cada 6 horas e quando há alterações no arquivo de configurações. Aplica regras de proteção de branch, configurações de merge e outras configurações do repositório a partir de `.github/config/repo-settings.json`.
 
 ## Modelo de Governança
 
@@ -127,7 +127,7 @@ Este builder e todos os repositórios de conteúdo herdam seu comportamento de C
 
 ### Sincronização de Arquivos Gerenciados
 
-O repositório de template pode enviar arquivos gerenciados (como definições de workflows e arquivos de configuração) para repositórios downstream. Isso mantém todos os repositórios alinhados sem atualizações manuais. A sincronização é executada por meio de um workflow separado no repositório de template.
+O repositório de template pode enviar arquivos gerenciados (como definições de workflows e arquivos de configuração) para repositórios downstream. Isso mantém todos os repositórios alinhados sem atualizações manuais. A sincronização é executada por um workflow separado no repositório de template.
 
 ### Proteção de Branch
 
@@ -135,12 +135,12 @@ O workflow enforce-repo-settings aplica regras de proteção de branch a partir 
 
 - Verificações de status obrigatórias antes do merge
 - Verificação obrigatória de issue vinculada
-- Squash merge preferido
+- Preferência por squash merge
 - Exclusão automática de branches head após o merge
 
 ## Secrets
 
 | Secret | Origem | Propósito |
 |--------|--------|-----------|
-| `GITHUB_TOKEN` | Automático (GitHub) | Utilizado pela maioria dos workflows para checkout, publicação de pacotes e chamadas de API |
+| `GITHUB_TOKEN` | Automático (GitHub) | Utilizado pela maioria dos workflows para checkout, publicação de pacotes e chamadas à API |
 | `REPO_ADMIN_TOKEN` | Manual (secret do repositório) | Necessário pelo enforce-repo-settings e pelo job de dispatch para modificar proteção de branch, configurações do repositório e acionar workflows downstream (requer escopo admin) |

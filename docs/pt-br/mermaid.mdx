@@ -1,7 +1,7 @@
 ---
 title: Diagramas Mermaid
 description: >-
-  Plugin remark, renderização CDN no lado do cliente, substituição de
+  Plugin remark, renderização via CDN no lado do cliente, substituição de
   placeholders em diagramas e tratamento de erros.
 sidebar:
   order: 3
@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-O builder suporta diagramas [Mermaid](https://mermaid.js.org/) com processamento em duas fases: um plugin remark no momento da build prepara a marcação, e um renderizador no lado do cliente produz o SVG.
+O builder suporta diagramas [Mermaid](https://mermaid.js.org/) com processamento em duas fases: um plugin remark no momento do build prepara a marcação, e um renderizador no lado do cliente produz o SVG.
 
 ## Plugin Remark
 
-O plugin remark-mermaid (fornecido pelo pacote npm `docs-theme`) é executado durante a build do Astro. Ele utiliza `unist-util-visit` para encontrar blocos de código cercados com `lang === 'mermaid'` e os substitui por HTML:
+O plugin remark-mermaid (fornecido pelo pacote npm `docs-theme`) é executado durante o build do Astro. Ele utiliza `unist-util-visit` para encontrar blocos de código cercados com `lang === 'mermaid'` e os substitui por HTML:
 
 ```js
 visit(tree, 'code', (node, index, parent) => {
@@ -46,7 +46,7 @@ Detalhes importantes:
 
 ## Renderização no Lado do Cliente
 
-A função `renderMermaidDiagrams()` em `src/scripts/placeholder-dom.ts` gerencia a geração de SVG no navegador.
+A função `renderMermaidDiagrams()` em `src/scripts/placeholder-dom.ts` lida com a geração de SVG no navegador.
 
 ### Importação do Mermaid
 
@@ -74,7 +74,7 @@ mermaid.initialize({
 });
 ```
 
-`startOnLoad: false` impede que o Mermaid escaneie automaticamente a página. `securityLevel: 'loose'` permite eventos de clique e links nos diagramas.
+`startOnLoad: false` impede que o Mermaid faça varredura automática da página. `securityLevel: 'loose'` permite eventos de clique e links nos diagramas.
 
 ### Loop de Renderização
 
@@ -95,7 +95,7 @@ const template = container.getAttribute('data-mermaid-src') || '';
 const substituted = substituteText(template, values);
 ```
 
-Isso significa que tokens de placeholder como `xCUSTOMER_ASNx` funcionam dentro das definições de diagramas Mermaid. Quando um usuário altera um valor no formulário, o evento `placeholder-change` aciona uma re-renderização completa de todos os diagramas com os valores atualizados.
+Isso significa que tokens de placeholder como `xCUSTOMER_ASNx` funcionam dentro de definições de diagramas Mermaid. Quando um usuário altera um valor no formulário, o evento `placeholder-change` dispara uma re-renderização completa de todos os diagramas com os valores atualizados.
 
 ## Tratamento de Erros
 
@@ -107,7 +107,7 @@ Se `mermaid.render()` lançar uma exceção (por exemplo, devido a um erro de si
 }
 ```
 
-Isso torna erros de autoria visíveis sem quebrar o restante da página.
+Isso torna os erros de autoria visíveis sem quebrar o restante da página.
 
 ## Re-renderização
 
@@ -129,4 +129,4 @@ flowchart LR
 ```
 ````
 
-O plugin remark converte isso em uma div container no momento da build. O cliente renderiza como um SVG com os valores de placeholder substituídos.
+O plugin remark converte isso em um div container no momento do build. O cliente o renderiza como um SVG com os valores de placeholder substituídos.

@@ -30,26 +30,26 @@ docker run --rm -it \
 Abra **http://localhost:4321** una vez que el servidor se inicie.
 
 :::note
-Los cambios en archivos de su máquina local requieren reiniciar el contenedor. Deténgalo con `Ctrl+C` y vuelva a ejecutar el comando para aplicar las ediciones.
+Los cambios en los archivos de su host requieren reiniciar el contenedor. Deténgalo con `Ctrl+C` y vuelva a ejecutar el comando para aplicar las ediciones.
 :::
 
 ## Imágenes y recursos estáticos
 
-Coloque las imágenes en un subdirectorio como `docs/images/`. El contenedor las detecta automáticamente — no se necesitan montajes de volúmenes adicionales.
+Coloque las imágenes en un subdirectorio como `docs/images/`. El contenedor las detecta automáticamente — no se necesitan montajes de volumen adicionales.
 
 Haga referencia a ellas en su MDX con una ruta relativa a la raíz:
 
 ```mdx
-![Architecture diagram](/images/architecture.png)
+![Diagrama de arquitectura](/images/architecture.png)
 ```
 
 ## Solución de problemas
 
-**Puerto ya en uso** — Mapee a un puerto de host diferente: `-p 8080:4321`, luego abra `http://localhost:8080`.
+**Puerto ya en uso** — Asigne un puerto de host diferente: `-p 8080:4321`, luego abra `http://localhost:8080`.
 
-**El contenido no aparece** — Verifique que `docs/index.mdx` exista. Revise la salida del contenedor en busca de un mensaje `ERROR: No content found`.
+**El contenido no aparece** — Verifique que `docs/index.mdx` exista. Revise la salida del contenedor en busca del mensaje `ERROR: No content found`.
 
-**Imagen desactualizada** — Descargue la última versión:
+**Imagen desactualizada** — Descargue la versión más reciente:
 
 ```sh
 docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
@@ -57,5 +57,5 @@ docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
 
 ## Lectura adicional
 
-- [Docker Build](../docker/) — Detalles de la imagen, variables de entorno y compilaciones de producción
+- [Compilación con Docker](../docker/) — Detalles de la imagen, variables de entorno y compilaciones de producción
 - [Arquitectura](../architecture/) — Modelo de inyección de contenido y diseño del sistema de temas

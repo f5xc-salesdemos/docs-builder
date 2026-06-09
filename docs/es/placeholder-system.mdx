@@ -2,7 +2,7 @@
 title: Sistema de Marcadores de Posición
 description: >-
   Formato de tokens, gestión de estado, recorrido del DOM, valores calculados y
-  cómo añadir nuevos marcadores de posición.
+  cómo agregar nuevos marcadores de posición.
 sidebar:
   order: 2
 i18n:
@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-El sistema de marcadores de posición permite a los lectores personalizar direcciones IP, ASNs y otros valores específicos de implementación a lo largo de la documentación. Los autores escriben tokens en su Markdown; el navegador los reemplaza con valores proporcionados por el usuario en tiempo de ejecución.
+El sistema de marcadores de posición permite a los lectores personalizar direcciones IP, ASNs y otros valores específicos de despliegue a lo largo de la documentación. Los autores escriben tokens en su Markdown; el navegador los reemplaza con valores proporcionados por el usuario en tiempo de ejecución.
 
-## Formato de Token
+## Formato de Tokens
 
-Los tokens siguen el patrón de expresión regular:
+Los tokens siguen el patrón regex:
 
 ```
 x([A-Z][A-Z0-9_]+)x
@@ -44,14 +44,14 @@ Todos los marcadores de posición se declaran en `src/data/placeholders.json`. C
 
 | Campo | Requerido | Descripción |
 |-------|-----------|-------------|
-| `type` | sí | `"text"` para entrada de texto libre, `"dropdown"` para menús desplegables |
+| `type` | sí | `"text"` para entrada libre, `"dropdown"` para menús de selección |
 | `default` | sí | Valor inicial mostrado antes de que el lector realice cambios |
 | `description` | sí | Etiqueta mostrada en el formulario |
 | `options` | solo para dropdown | Array de valores permitidos |
 
 ## Gestión de Estado
 
-`src/lib/placeholder-store.ts` gestiona todo el estado de los marcadores de posición.
+`src/lib/placeholder-store.ts` maneja todo el estado de los marcadores de posición.
 
 ### Almacenamiento
 
@@ -59,8 +59,8 @@ Los valores se persisten en `localStorage` bajo la clave `f5xc-placeholders`. El
 
 | Función | Propósito |
 |---------|-----------|
-| `getDefaults()` | Devuelve un mapa de cada clave de marcador de posición a su valor `default` del JSON |
-| `loadValues()` | Lee de localStorage, recurre a `getDefaults()` como respaldo |
+| `getDefaults()` | Devuelve un mapa de cada clave de marcador de posición con su valor `default` del JSON |
+| `loadValues()` | Lee desde localStorage, recurre a `getDefaults()` como respaldo |
 | `saveValues(values)` | Escribe el mapa actual en localStorage |
 | `clearValues()` | Elimina la entrada de localStorage |
 
@@ -96,7 +96,7 @@ Se producen dos marcadores de posición calculados:
 | `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` mediante búsqueda en `cidrToMask` | `255.255.255.0` |
 | `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` mediante `cidrToShort` | `192.0.2.0/24` |
 
-`getAllValues()` combina los valores ingresados por el usuario con los valores calculados, proporcionando un mapa completo para la sustitución.
+`getAllValues()` fusiona los valores ingresados por el usuario con los valores calculados, proporcionando un mapa completo para la sustitución.
 
 ### Emisión de Eventos
 
@@ -110,7 +110,7 @@ export function emitChange(values: Record<string, string>) {
 }
 ```
 
-Este evento impulsa tanto las actualizaciones de los spans del DOM como el re-renderizado de Mermaid.
+Este evento impulsa tanto las actualizaciones de los spans en el DOM como el re-renderizado de Mermaid.
 
 ## Componente React del Formulario
 
@@ -120,7 +120,7 @@ Este evento impulsa tanto las actualizaciones de los spans del DOM como el re-re
 - **Al montar**: `useEffect` llama a `emitChange()` para activar la sustitución inicial del DOM
 - **handleChange**: Actualiza el estado de React, llama a `saveValues()` y `emitChange()`
 - **handleReset**: Llama a `clearValues()`, restablece el estado a `getDefaults()`, emite el cambio
-- **Renderizado**: Itera `FIELD_GROUPS`, renderizando un `<fieldset>` por grupo. Cada clave obtiene un `<input>` (tipo texto) o un `<select>` (tipo desplegable)
+- **Renderizado**: Itera `FIELD_GROUPS`, renderizando un `<fieldset>` por grupo. Cada clave obtiene un `<input>` (tipo text) o un `<select>` (tipo dropdown)
 - **Diseño**: El formulario está envuelto en un elemento `<details>`, colapsado por defecto
 
 ## Envoltorio Astro
@@ -141,7 +141,7 @@ El envoltorio también inyecta CSS global para el estilo del formulario (`.ph-fo
 
 ## Recorredor del DOM
 
-`src/scripts/placeholder-dom.ts` gestiona el reemplazo de tokens del lado del cliente.
+`src/scripts/placeholder-dom.ts` maneja el reemplazo de tokens del lado del cliente.
 
 ### Recorrido Inicial
 
@@ -149,7 +149,7 @@ Al cargar la página, `init()` se ejecuta:
 
 1. Selecciona `.sl-markdown-content` como raíz (recurre a `document.body` como respaldo)
 2. Llama a `walkTextNodes(root, values)` que utiliza `document.createTreeWalker` con `NodeFilter.SHOW_TEXT`
-3. Para cada nodo de texto que coincide con la expresión regular del token, lo divide en un fragmento de documento con nodos de texto plano y elementos `<span data-ph="KEY" class="ph-value">`
+3. Para cada nodo de texto que coincida con la expresión regular del token, lo divide en un fragmento de documento con nodos de texto plano y elementos `<span data-ph="KEY" class="ph-value">`
 4. Reemplaza el nodo de texto original con el fragmento
 
 Después del recorrido, el DOM contiene spans con atributos `data-ph` en lugar de tokens sin procesar.
@@ -176,11 +176,11 @@ El script registra dos escuchadores:
 | Evento | Manejador | Propósito |
 |--------|-----------|-----------|
 | `placeholder-change` | `handleChange` | Actualiza los spans y re-renderiza los diagramas Mermaid |
-| `astro:page-load` | `init` | Recorre nuevamente el DOM después de la navegación del lado del cliente de Astro |
+| `astro:page-load` | `init` | Recorre el DOM nuevamente después de la navegación del lado del cliente de Astro |
 
-## Cómo: Añadir un Nuevo Marcador de Posición
+## Cómo: Agregar un Nuevo Marcador de Posición
 
-1. **Añadir la entrada JSON** en `src/data/placeholders.json`:
+1. **Agregar la entrada JSON** en `src/data/placeholders.json`:
    ```json
    "MY_NEW_VALUE": {
      "type": "text",
@@ -189,15 +189,15 @@ El script registra dos escuchadores:
    }
    ```
 
-2. **Añadir la clave a un grupo de campos** en `src/lib/placeholder-store.ts`. Ya sea añadiéndola al array `keys` de un grupo existente o creando un nuevo grupo en `FIELD_GROUPS`.
+2. **Agregar la clave a un grupo de campos** en `src/lib/placeholder-store.ts`. Ya sea agregándola al array `keys` de un grupo existente o creando un nuevo grupo en `FIELD_GROUPS`.
 
 3. **Usar el token en el contenido**: Escriba `xMY_NEW_VALUEx` en cualquier archivo `.mdx`. El recorredor del DOM lo reemplazará en tiempo de ejecución.
 
-## Cómo: Añadir un Valor Calculado
+## Cómo: Agregar un Valor Calculado
 
-Los valores calculados se derivan de otros marcadores de posición. Para añadir uno:
+Los valores calculados se derivan de otros marcadores de posición. Para agregar uno:
 
-1. Añada una tabla de búsqueda (si es necesario) en `src/lib/placeholder-store.ts`, siguiendo el patrón de `cidrToMask`.
+1. Agregue una tabla de búsqueda (si es necesario) en `src/lib/placeholder-store.ts`, siguiendo el patrón de `cidrToMask`.
 
 2. Extienda `getComputedValues()` para incluir la nueva clave derivada:
    ```ts
@@ -206,7 +206,7 @@ Los valores calculados se derivan de otros marcadores de posición. Para añadir
      return {
        PROTECTED_MASK_V4: mask,
        PROTECTED_PREFIX_V4: `${net}${short}`,
-       MY_COMPUTED: derivedValue,  // añadir aquí
+       MY_COMPUTED: derivedValue,  // agregar aquí
      };
    }
    ```

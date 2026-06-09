@@ -12,7 +12,7 @@ i18n:
 
 ## Panoramica
 
-Il docs builder è un sistema containerizzato basato su [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/). I repository di contenuto forniscono file Markdown/MDX; il builder mette a disposizione il framework, il tema e la logica di build. Le due parti si incontrano al momento della build all'interno di un container Docker.
+Il docs builder è un sistema containerizzato basato su [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/). I repository di contenuto forniscono file Markdown/MDX; il builder fornisce il framework, il tema e la logica di build. Le due parti si incontrano al momento della build all'interno di un container Docker.
 
 ## Modello di Iniezione dei Contenuti
 
@@ -20,7 +20,7 @@ I repository di contenuto mantengono la propria documentazione in una directory 
 
 ```
 content-repo/
-  docs/           ← redatti dai team di contenuto
+  docs/           ← creati dai team di contenuto
     index.mdx
     guide.mdx
 
@@ -50,24 +50,24 @@ Il pacchetto del tema possiede `astro.config.mjs`. Al momento della build, l'ent
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
-Questo mantiene la configurazione centralizzata — i repository di contenuto e il builder stesso non gestiscono la propria configurazione Astro.
+Questo mantiene la configurazione centralizzata — i repository di contenuto e il builder stesso non mantengono una propria configurazione Astro.
 
-## Struttura della Directory Sorgente
+## Struttura delle Directory Sorgente
 
 ```
 src/
   components/
-    PlaceholderForm.tsx          # Form React per la modifica dei valori dei placeholder
-    PlaceholderFormWrapper.astro # Wrapper Astro, carica lo script DOM e il CSS globale
+    PlaceholderForm.tsx          # Form React per la modifica dei valori segnaposto
+    PlaceholderFormWrapper.astro # Wrapper Astro, carica script DOM e CSS globale
   content/
     docs/                        # Punto di montaggio per il contenuto iniettato
   content.config.ts              # Definizione della content collection di Starlight
   data/
-    placeholders.json            # Definizioni dei token placeholder
+    placeholders.json            # Definizioni dei token segnaposto
   lib/
     placeholder-store.ts         # Gestione dello stato: caricamento, salvataggio, calcolo, emissione
   scripts/
-    placeholder-dom.ts           # Walker DOM lato client e renderer Mermaid
+    placeholder-dom.ts           # TreeWalker DOM lato client e renderer Mermaid
 ```
 
 ## Content Collection
@@ -84,11 +84,11 @@ export const collections = {
 };
 ```
 
-Qualsiasi file `.md` o `.mdx` posizionato in `src/content/docs/` diventa una pagina nel sito generato.
+Qualsiasi file `.md` o `.mdx` inserito in `src/content/docs/` diventa una pagina nel sito generato.
 
 ## Flusso di Build
 
-Il diagramma seguente mostra la pipeline di build end-to-end quando il container Docker viene eseguito:
+Il seguente diagramma mostra la pipeline di build end-to-end quando il container Docker viene eseguito:
 
 ```mermaid
 flowchart LR
@@ -106,9 +106,9 @@ flowchart LR
 
 | Aspetto | Quando | Come |
 |---------|--------|------|
-| MDX → HTML | Build time | Compilatore Astro |
-| Blocchi di codice Mermaid → div contenitore | Build time | Plugin `remark-mermaid.mjs` (da `docs-theme`) |
-| Token placeholder → span interattivi | Client time | TreeWalker di `placeholder-dom.ts` |
-| Rendering SVG Mermaid | Client time | Import CDN di `mermaid` in `placeholder-dom.ts` |
-| Stato del form placeholder | Client time | `placeholder-store.ts` + localStorage |
-| Transizioni di pagina Astro | Client time | Event listener `astro:page-load` |
+| MDX → HTML | Momento della build | Compilatore Astro |
+| Blocchi di codice Mermaid → div container | Momento della build | Plugin `remark-mermaid.mjs` (da `docs-theme`) |
+| Token segnaposto → span interattivi | Lato client | TreeWalker `placeholder-dom.ts` |
+| Rendering SVG Mermaid | Lato client | Import CDN `mermaid` in `placeholder-dom.ts` |
+| Stato del form segnaposto | Lato client | `placeholder-store.ts` + localStorage |
+| Transizioni di pagina Astro | Lato client | Event listener `astro:page-load` |

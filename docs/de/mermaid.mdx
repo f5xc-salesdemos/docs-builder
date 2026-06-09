@@ -1,7 +1,7 @@
 ---
 title: Mermaid-Diagramme
 description: >-
-  Remark-Plugin, clientseitiges CDN-Rendering, Platzhalter-Substitution in
+  Remark-Plugin, clientseitiges CDN-Rendering, Platzhalter-Ersetzung in
   Diagrammen und Fehlerbehandlung.
 sidebar:
   order: 3
@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-Der Builder unterstützt [Mermaid](https://mermaid.js.org/)-Diagramme mit zweiphasiger Verarbeitung: Ein Remark-Plugin bereitet das Markup zur Build-Zeit vor, und ein clientseitiger Renderer erzeugt das SVG.
+Der Builder unterstützt [Mermaid](https://mermaid.js.org/)-Diagramme mit zweiphasiger Verarbeitung: Ein Remark-Plugin bereitet zur Build-Zeit das Markup vor, und ein clientseitiger Renderer erzeugt das SVG.
 
 ## Remark-Plugin
 
-Das remark-mermaid-Plugin (bereitgestellt durch das `docs-theme`-NPM-Paket) wird während des Astro-Builds ausgeführt. Es verwendet `unist-util-visit`, um eingezäunte Codeblöcke mit `lang === 'mermaid'` zu finden und durch HTML zu ersetzen:
+Das remark-mermaid-Plugin (bereitgestellt durch das `docs-theme` npm-Paket) wird während des Astro-Builds ausgeführt. Es verwendet `unist-util-visit`, um eingezäunte Codeblöcke mit `lang === 'mermaid'` zu finden und durch HTML zu ersetzen:
 
 ```js
 visit(tree, 'code', (node, index, parent) => {
@@ -50,7 +50,7 @@ Die Funktion `renderMermaidDiagrams()` in `src/scripts/placeholder-dom.ts` über
 
 ### Mermaid-Import
 
-Mermaid wird bei Bedarf von einem CDN geladen — es wird nicht gebündelt:
+Mermaid wird bei Bedarf von einem CDN geladen — es ist nicht gebündelt:
 
 ```ts
 const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default;
@@ -81,12 +81,12 @@ mermaid.initialize({
 Für jedes `.mermaid-container`-Element:
 
 1. Den rohen Diagramm-Quelltext aus `data-mermaid-src` lesen
-2. Platzhalter-Substitution auf den Quelltext anwenden (siehe unten)
+2. Platzhalter-Ersetzung auf dem Quelltext ausführen (siehe unten)
 3. Den Container leeren und jedes `data-processed`-Attribut entfernen
 4. `mermaid.render()` mit einer zufälligen ID aufrufen, um SVG zu erzeugen
 5. `backgroundColor: 'white'` auf dem gerenderten `<svg>`-Element setzen
 
-## Platzhalter-Substitution in Diagrammen
+## Platzhalter-Ersetzung in Diagrammen
 
 Vor dem Rendering durchläuft der Diagramm-Quelltext dieselbe `substituteText()`-Funktion, die auch vom DOM-Walker verwendet wird (siehe [Platzhalter-System](../placeholder-system/) für den Walker-Mechanismus):
 
@@ -118,7 +118,7 @@ Diagramme werden in zwei Situationen neu gerendert:
 | Platzhalter-Wert ändert sich | `placeholder-change` | `handleChange()` ruft `renderMermaidDiagrams()` mit neuen Werten auf |
 | Astro-Seitennavigation | `astro:page-load` | `init()` ruft `renderMermaidDiagrams()` für die neue Seite auf |
 
-## Autoren-Syntax
+## Autor-Syntax
 
 Schreiben Sie einen standardmäßigen eingezäunten Codeblock mit dem `mermaid`-Sprachtag:
 
@@ -129,4 +129,4 @@ flowchart LR
 ```
 ````
 
-Das Remark-Plugin konvertiert dies zur Build-Zeit in ein Container-Div. Der Client rendert es als SVG mit substituierten Platzhalterwerten.
+Das Remark-Plugin konvertiert dies zur Build-Zeit in ein Container-Div. Der Client rendert es als SVG mit ersetzten Platzhalterwerten.

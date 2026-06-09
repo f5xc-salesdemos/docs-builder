@@ -8,7 +8,7 @@ i18n:
   translator: machine
 ---
 
-プレースホルダーシステムにより、読者はドキュメント全体でIPアドレス、ASN、その他のデプロイメント固有の値をカスタマイズできます。著者はMarkdown内にトークンを記述し、ブラウザが実行時にユーザーが指定した値に置換します。
+プレースホルダーシステムにより、読者はドキュメント全体でIPアドレス、ASN、およびその他のデプロイ固有の値をカスタマイズできます。著者はMarkdownにトークンを記述し、ブラウザが実行時にそれらをユーザーが指定した値に置き換えます。
 
 ## トークン形式
 
@@ -18,7 +18,7 @@ i18n:
 x([A-Z][A-Z0-9_]+)x
 ```
 
-トークンは小文字の `x` で始まり、大文字の識別子を含み、小文字の `x` で終わります。例えば、`xCUSTOMER_ASNx` は `CUSTOMER_ASN` プレースホルダーを参照します。
+トークンは小文字の `x` で始まり、小文字の `x` で終わり、大文字の識別子を含みます。例えば、`xCUSTOMER_ASNx` は `CUSTOMER_ASN` プレースホルダーを参照します。
 
 正規表現は `src/scripts/placeholder-dom.ts` で定義されています：
 
@@ -26,9 +26,9 @@ x([A-Z][A-Z0-9_]+)x
 const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
 ```
 
-## プレースホルダーの定義
+## プレースホルダー定義
 
-すべてのプレースホルダーは `src/data/placeholders.json` で宣言されています。各エントリは以下の構造を持ちます：
+すべてのプレースホルダーは `src/data/placeholders.json` で宣言されています。各エントリは以下の形式を持ちます：
 
 ```json
 {
@@ -53,18 +53,18 @@ const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
 
 ### ストレージ
 
-値は `f5xc-placeholders` というキーで `localStorage` に永続化されます。ストアは4つの関数を公開しています：
+値は `localStorage` の `f5xc-placeholders` キーに永続化されます。ストアは4つの関数を公開しています：
 
 | 関数 | 目的 |
 |----------|---------|
-| `getDefaults()` | JSONからすべてのプレースホルダーキーとその `default` 値のマップを返す |
-| `loadValues()` | localStorageから読み取り、失敗した場合は `getDefaults()` にフォールバック |
-| `saveValues(values)` | 現在のマップをlocalStorageに書き込む |
-| `clearValues()` | localStorageのエントリを削除する |
+| `getDefaults()` | JSONからすべてのプレースホルダーキーとその `default` 値のマップを返します |
+| `loadValues()` | localStorageから読み取り、失敗した場合は `getDefaults()` にフォールバックします |
+| `saveValues(values)` | 現在のマップをlocalStorageに書き込みます |
+| `clearValues()` | localStorageのエントリを削除します |
 
 ### フィールドグループ
 
-`FIELD_GROUPS` はフォームUIのために、プレースホルダーキーをラベル付きセクションに整理します：
+`FIELD_GROUPS` はフォームUIのラベル付きセクションにプレースホルダーキーを整理します：
 
 ```ts
 export const FIELD_GROUPS: FieldGroup[] = [
@@ -96,9 +96,9 @@ const cidrToMask: Record<string, string> = {
 
 `getAllValues()` はユーザー入力値と算出値をマージし、置換用の完全なマップを提供します。
 
-### イベント発行
+### イベントの発行
 
-`emitChange()` は `document` 上で `placeholder-change` CustomEventをディスパッチし、完全な値マップを `detail` として含めます：
+`emitChange()` は `document` 上で `placeholder-change` CustomEventをディスパッチし、完全な値マップを `detail` として含みます：
 
 ```ts
 export function emitChange(values: Record<string, string>) {
@@ -108,22 +108,22 @@ export function emitChange(values: Record<string, string>) {
 }
 ```
 
-このイベントはDOMのspan更新とMermaid図の再レンダリングの両方を駆動します。
+このイベントは、DOMのspan更新とMermaidの再レンダリングの両方を駆動します。
 
 ## Reactフォームコンポーネント
 
 `src/components/PlaceholderForm.tsx` が編集UIを提供します。
 
-- **状態**: `useState` は `loadValues()` で初期化
-- **マウント時**: `useEffect` が `emitChange()` を呼び出し、初期DOM置換をトリガー
-- **handleChange**: React状態を更新し、`saveValues()` と `emitChange()` を呼び出す
-- **handleReset**: `clearValues()` を呼び出し、状態を `getDefaults()` にリセットし、変更を発行
-- **レンダリング**: `FIELD_GROUPS` をイテレートし、グループごとに `<fieldset>` をレンダリング。各キーは `<input>`（テキスト型）または `<select>`（ドロップダウン型）のいずれかを取得
-- **レイアウト**: フォームは `<details>` 要素でラップされ、デフォルトでは折りたたまれた状態
+- **状態**: `loadValues()` から初期化された `useState`
+- **マウント時**: `useEffect` が `emitChange()` を呼び出して初回のDOM置換をトリガーします
+- **handleChange**: Reactの状態を更新し、`saveValues()` と `emitChange()` を呼び出します
+- **handleReset**: `clearValues()` を呼び出し、状態を `getDefaults()` にリセットし、変更を発行します
+- **レンダリング**: `FIELD_GROUPS` を反復し、グループごとに `<fieldset>` をレンダリングします。各キーは `<input>`（テキスト型）または `<select>`（ドロップダウン型）のいずれかを取得します
+- **レイアウト**: フォームは `<details>` 要素でラップされ、デフォルトでは折りたたまれています
 
 ## Astroラッパー
 
-`src/components/PlaceholderFormWrapper.astro` はReactコンポーネントをAstroページに接続します：
+`src/components/PlaceholderFormWrapper.astro` がReactコンポーネントをAstroページに接続します：
 
 ```astro
 <PlaceholderForm client:only="react" />
@@ -133,22 +133,22 @@ export function emitChange(values: Record<string, string>) {
 </script>
 ```
 
-`client:only="react"` はAstroに対して、コンポーネントをクライアント側でのみハイドレーション（SSRなし）するよう指示します。`<script>` タグはDOMウォーカーをインポートし、このラッパーを含むすべてのページで実行されるようにします。
+`client:only="react"` はAstroにコンポーネントを純粋にクライアント側でハイドレーションするよう指示します（SSRなし）。`<script>` タグはDOMウォーカーをインポートし、このラッパーを含むすべてのページで実行されるようにします。
 
-ラッパーはフォームスタイリング用のグローバルCSS（`.ph-form-wrapper`、`.ph-grid`、`.ph-value` など）も注入します。
+ラッパーはフォームスタイリング用のグローバルCSS（`.ph-form-wrapper`、`.ph-grid`、`.ph-value` など）も挿入します。
 
 ## DOMウォーカー
 
 `src/scripts/placeholder-dom.ts` がクライアント側のトークン置換を処理します。
 
-### 初期ウォーク
+### 初回ウォーク
 
 ページ読み込み時に `init()` が実行されます：
 
-1. `.sl-markdown-content` をルートとして選択（フォールバックは `document.body`）
-2. `document.createTreeWalker` と `NodeFilter.SHOW_TEXT` を使用する `walkTextNodes(root, values)` を呼び出す
-3. トークン正規表現に一致する各テキストノードについて、プレーンテキストノードと `<span data-ph="KEY" class="ph-value">` 要素のドキュメントフラグメントに分割
-4. 元のテキストノードをフラグメントに置換
+1. `.sl-markdown-content` をルートとして選択します（フォールバックとして `document.body`）
+2. `walkTextNodes(root, values)` を呼び出し、`NodeFilter.SHOW_TEXT` を使用した `document.createTreeWalker` を使用します
+3. トークン正規表現に一致する各テキストノードについて、プレーンテキストノードと `<span data-ph="KEY" class="ph-value">` 要素のドキュメントフラグメントに分割します
+4. 元のテキストノードをフラグメントで置き換えます
 
 ウォーク後、DOMには生のトークンの代わりに `data-ph` 属性を持つspanが含まれます。
 
@@ -173,12 +173,12 @@ document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
 
 | イベント | ハンドラー | 目的 |
 |-------|---------|---------|
-| `placeholder-change` | `handleChange` | spanを更新し、Mermaid図を再レンダリング |
-| `astro:page-load` | `init` | Astroのクライアント側ナビゲーション後にDOMを再ウォーク |
+| `placeholder-change` | `handleChange` | spanを更新し、Mermaidダイアグラムを再レンダリングします |
+| `astro:page-load` | `init` | Astroクライアント側ナビゲーション後にDOMを再ウォークします |
 
-## 方法：新しいプレースホルダーの追加
+## 手順：新しいプレースホルダーの追加
 
-1. `src/data/placeholders.json` に **JSONエントリを追加**：
+1. `src/data/placeholders.json` に**JSONエントリを追加**します：
    ```json
    "MY_NEW_VALUE": {
      "type": "text",
@@ -187,17 +187,17 @@ document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
    }
    ```
 
-2. `src/lib/placeholder-store.ts` で**フィールドグループにキーを追加**。既存グループの `keys` 配列に追加するか、`FIELD_GROUPS` に新しいグループを作成します。
+2. `src/lib/placeholder-store.ts` で**フィールドグループにキーを追加**します。既存グループの `keys` 配列に追加するか、`FIELD_GROUPS` に新しいグループを作成します。
 
-3. **コンテンツでトークンを使用**：任意の `.mdx` ファイルに `xMY_NEW_VALUEx` と記述します。DOMウォーカーが実行時にこれを置換します。
+3. **コンテンツでトークンを使用**します：任意の `.mdx` ファイルに `xMY_NEW_VALUEx` と記述します。DOMウォーカーが実行時にそれを置き換えます。
 
-## 方法：算出値の追加
+## 手順：算出値の追加
 
 算出値は他のプレースホルダーから導出されます。追加するには：
 
 1. 必要に応じて `src/lib/placeholder-store.ts` に `cidrToMask` のパターンに従ってルックアップテーブルを追加します。
 
-2. `getComputedValues()` を拡張して、新しい導出キーを含めます：
+2. `getComputedValues()` を拡張して新しい導出キーを含めます：
    ```ts
    export function getComputedValues(values: Record<string, string>): Record<string, string> {
      // ... 既存のロジック
@@ -209,4 +209,4 @@ document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
    }
    ```
 
-3. 他のトークンと同様に、コンテンツで `xMY_COMPUTEDx` を使用します。算出値は `placeholders.json` エントリやフィールドグループを必要としません — フォームからは見えません。
+3. 他のトークンと同様に、コンテンツで `xMY_COMPUTEDx` を使用します。算出値は `placeholders.json` のエントリやフィールドグループは不要です — フォームからは見えません。

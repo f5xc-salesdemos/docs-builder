@@ -14,10 +14,10 @@ i18n:
 
 | 工作流 | 文件 | 触发条件 | 用途 |
 |----------|------|---------|---------|
-| GitHub Pages 部署 | `github-pages-deploy.yml` | 推送到 `main`（`docs/**`）、手动触发 | 构建文档站点并部署到 GitHub Pages |
-| 构建并发布 Docker 镜像 | `build-image.yml` | 推送到 `main`（`docker/**`、`package*.json`）、每日定时任务、`repository_dispatch` | 构建 Docker 镜像，推送到 GHCR，并触发下游仓库重新构建 |
-| 要求关联 Issue | `require-linked-issue.yml` | Pull Request 事件 | 阻止未引用 GitHub Issue 的 PR |
-| 强制执行仓库设置 | `enforce-repo-settings.yml` | 每 6 小时、推送设置配置文件时、手动触发 | 从模板应用标准化的仓库设置 |
+| GitHub Pages 部署 | `github-pages-deploy.yml` | 推送到 `main`（`docs/**`），手动触发 | 构建文档站点并部署到 GitHub Pages |
+| 构建和发布 Docker 镜像 | `build-image.yml` | 推送到 `main`（`docker/**`、`package*.json`），每日定时任务，`repository_dispatch` | 构建 Docker 镜像，推送到 GHCR，并向下游仓库发送重建调度 |
+| 要求关联 Issue | `require-linked-issue.yml` | Pull request 事件 | 阻止未引用 GitHub issue 的 PR |
+| 强制执行仓库设置 | `enforce-repo-settings.yml` | 每 6 小时，推送到设置配置文件，手动触发 | 从模板应用标准化仓库设置 |
 
 ### GitHub Pages 部署
 
@@ -38,11 +38,11 @@ jobs:
     uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
-权限：`contents: read`、`packages: read`、`pages: write`、`id-token: write`。使用并发组 `pages` 并设置 `cancel-in-progress: true` 以避免过时的部署。
+权限：`contents: read`、`packages: read`、`pages: write`、`id-token: write`。使用并发组 `pages`，设置 `cancel-in-progress: true` 以避免过时的部署。
 
-仅在 `docs/` 目录下的文件发生变更时才会在推送时触发。也可以通过 `workflow_dispatch` 手动触发，这也是 `build-image.yml` 中的 dispatch 任务触发下游重新构建的方式。
+仅在 `docs/` 下的文件发生变更时才会在推送时触发。也可以通过 `workflow_dispatch` 手动触发，`build-image.yml` 中的调度任务就是通过这种方式触发下游重建的。
 
-### 构建并发布 Docker 镜像
+### 构建和发布 Docker 镜像
 
 ```yaml
 on:
@@ -61,14 +61,14 @@ on:
 步骤：
 1. 检出代码
 2. 使用 `docker/login-action` 登录 `ghcr.io`
-3. 使用 `docker/build-push-action` 构建并推送，上下文为 `.`，Dockerfile 为 `docker/Dockerfile`
+3. 使用 `docker/build-push-action` 构建并推送，上下文为 `.`，Dockerfile 路径为 `docker/Dockerfile`
 4. 标签：`ghcr.io/<owner>/<repo>:latest` 和 `ghcr.io/<owner>/<repo>:<sha>`
 
-构建成功后，**dispatch** 任务会通过 `workflow_dispatch` 在模板仓库的 `downstream-repos.json` 配置中列出的每个下游仓库上触发 `github-pages-deploy.yml`。这确保所有内容仓库都使用更新后的构建器镜像重新构建其文档。
+构建成功后，**dispatch** 任务通过 `workflow_dispatch` 触发模板仓库 `downstream-repos.json` 配置中列出的每个下游仓库的 `github-pages-deploy.yml`。这确保所有内容仓库使用更新后的构建器镜像重新构建文档。
 
-每日定时任务确保即使没有代码变更，镜像也能保持最新（获取依赖更新）。`repository_dispatch` 事件允许外部系统触发重新构建。
+每日定时任务确保即使没有代码变更，镜像也能保持最新（获取依赖更新）。`repository_dispatch` 事件允许外部系统触发重建。
 
-仅在 `docker/` 文件或 `package*.json` 发生变更时才会在推送时触发。仅文档变更不会触发镜像重新构建。
+仅在 `docker/` 文件或 `package*.json` 发生变更时才会在推送时触发。仅文档变更不会触发镜像重建。
 
 ### 要求关联 Issue
 
@@ -78,13 +78,13 @@ on:
     types: [opened, edited, reopened, synchronize]
 ```
 
-使用 `nearform-actions/github-action-check-linked-issues@v1` 强制要求每个 PR 引用一个 GitHub Issue（例如，在描述中包含 `Closes #42`）。Dependabot PR 通过以下方式排除：
+使用 `nearform-actions/github-action-check-linked-issues@v1` 强制要求每个 PR 引用一个 GitHub issue（例如，在描述中包含 `Closes #42`）。Dependabot PR 通过以下配置排除：
 
 ```yaml
 exclude-branches: "dependabot/**"
 ```
 
-如果检查失败，会向贡献者显示自定义消息，说明预期的格式。完整的贡献者工作流请参见 [CONTRIBUTING.md](../CONTRIBUTING.md)。
+检查失败时会显示自定义消息，告知贡献者预期的格式。完整的贡献者工作流请参阅 [CONTRIBUTING.md](../CONTRIBUTING.md)。
 
 ### 强制执行仓库设置
 
@@ -109,7 +109,7 @@ jobs:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
 
-每 6 小时运行一次，并在设置配置文件发生变更时运行。从 `.github/config/repo-settings.json` 应用分支保护规则、合并设置和其他仓库配置。
+每 6 小时运行一次，以及在设置配置文件发生变更时运行。从 `.github/config/repo-settings.json` 应用分支保护规则、合并设置和其他仓库配置。
 
 ## 治理模型
 
@@ -118,27 +118,27 @@ jobs:
 `f5xc-salesdemos/docs-control` 仓库是以下内容的唯一事实来源：
 
 - 可复用工作流定义（文档部署、仓库设置强制执行）
-- 在组织内所有仓库中同步的受管文件
+- 在组织内所有仓库间同步的托管文件
 - 标准配置和分支保护规则
 
-本构建器和所有内容仓库都从模板继承其 CI/CD 行为。
+此构建器和所有内容仓库均从模板继承其 CI/CD 行为。
 
-### 受管文件同步
+### 托管文件同步
 
-模板仓库可以将受管文件（如工作流定义和配置文件）推送到下游仓库。这使所有仓库保持一致，无需手动更新。同步通过模板仓库中的单独工作流运行。
+模板仓库可以将托管文件（如工作流定义和配置文件）推送到下游仓库。这使所有仓库保持一致，无需手动更新。同步通过模板仓库中的单独工作流运行。
 
 ### 分支保护
 
-enforce-repo-settings 工作流从模板应用分支保护规则，包括：
+强制执行仓库设置工作流从模板应用分支保护规则，包括：
 
-- 合并前要求通过状态检查
-- 要求关联 Issue 检查
-- 首选压缩合并（Squash merge）
-- 合并后自动删除源分支
+- 合并前需要通过必需的状态检查
+- 需要关联 issue 检查
+- 首选 squash 合并
+- 合并后自动删除 head 分支
 
 ## 密钥
 
 | 密钥 | 来源 | 用途 |
 |--------|--------|---------|
-| `GITHUB_TOKEN` | 自动（GitHub） | 大多数工作流用于代码检出、包发布和 API 调用 |
-| `REPO_ADMIN_TOKEN` | 手动（仓库密钥） | enforce-repo-settings 和 dispatch 任务需要使用，用于修改分支保护、仓库设置和触发下游工作流（需要 admin 权限范围） |
+| `GITHUB_TOKEN` | 自动（GitHub 提供） | 大多数工作流用于检出、包发布和 API 调用 |
+| `REPO_ADMIN_TOKEN` | 手动（仓库密钥） | 强制执行仓库设置和调度任务所需，用于修改分支保护、仓库设置以及触发下游工作流（需要 admin 权限范围） |

@@ -1,8 +1,8 @@
 ---
 title: Diagrammes Mermaid
 description: >-
-  Plugin remark, rendu côté client via CDN, substitution de variables dans les
-  diagrammes et gestion des erreurs.
+  Plugin remark, rendu côté client via CDN, substitution de placeholders dans
+  les diagrammes et gestion des erreurs.
 sidebar:
   order: 3
 i18n:
@@ -41,8 +41,8 @@ Détails clés :
 |--------|--------|
 | Type de nœud correspondant | Nœuds `code` où `lang === 'mermaid'` |
 | Échappement des entités HTML | `&`, `<`, `>`, `"` — empêche l'injection d'attributs dans `data-mermaid-src` |
-| Structure de sortie | `<div class="mermaid-container">` avec l'attribut `data-mermaid-src` contenant la source échappée |
-| Contenu de secours | `<pre class="mermaid">` avec la source brute (visible jusqu'au rendu par JS) |
+| Structure de sortie | `<div class="mermaid-container">` avec un attribut `data-mermaid-src` contenant la source échappée |
+| Contenu de repli | `<pre class="mermaid">` avec la source brute (visible jusqu'au rendu JS) |
 
 ## Rendu côté client
 
@@ -81,21 +81,21 @@ mermaid.initialize({
 Pour chaque élément `.mermaid-container` :
 
 1. Lire la source brute du diagramme depuis `data-mermaid-src`
-2. Exécuter la substitution des variables sur la source (voir ci-dessous)
+2. Exécuter la substitution de placeholders sur la source (voir ci-dessous)
 3. Vider le conteneur et supprimer tout attribut `data-processed`
 4. Appeler `mermaid.render()` avec un ID aléatoire pour produire le SVG
-5. Définir `backgroundColor: 'white'` sur l'élément `<svg>` rendu
+5. Définir `backgroundColor: 'white'` sur l'élément `<svg>` généré
 
-## Substitution des variables dans les diagrammes
+## Substitution de placeholders dans les diagrammes
 
-Avant le rendu, la source du diagramme passe par la même fonction `substituteText()` utilisée par le parcoureur DOM (voir [Système de variables](../placeholder-system/) pour le mécanisme de parcours) :
+Avant le rendu, la source du diagramme passe par la même fonction `substituteText()` utilisée par le parcoureur DOM (voir [Système de placeholders](../placeholder-system/) pour le mécanisme de parcours) :
 
 ```ts
 const template = container.getAttribute('data-mermaid-src') || '';
 const substituted = substituteText(template, values);
 ```
 
-Cela signifie que les jetons de substitution comme `xCUSTOMER_ASNx` fonctionnent à l'intérieur des définitions de diagrammes Mermaid. Lorsqu'un utilisateur modifie une valeur dans le formulaire, l'événement `placeholder-change` déclenche un re-rendu complet de tous les diagrammes avec les valeurs mises à jour.
+Cela signifie que les jetons de placeholder comme `xCUSTOMER_ASNx` fonctionnent à l'intérieur des définitions de diagrammes Mermaid. Lorsqu'un utilisateur modifie une valeur dans le formulaire, l'événement `placeholder-change` déclenche un nouveau rendu complet de tous les diagrammes avec les valeurs mises à jour.
 
 ## Gestion des erreurs
 
@@ -107,15 +107,15 @@ Si `mermaid.render()` lève une exception (par exemple, en raison d'une erreur d
 }
 ```
 
-Cela rend les erreurs de rédaction visibles sans interrompre le reste de la page.
+Cela rend les erreurs de rédaction visibles sans casser le reste de la page.
 
-## Re-rendu
+## Nouveau rendu
 
 Les diagrammes sont re-rendus dans deux situations :
 
 | Déclencheur | Événement | Ce qui se passe |
 |-------------|-----------|-----------------|
-| Changement de valeur d'une variable | `placeholder-change` | `handleChange()` appelle `renderMermaidDiagrams()` avec les nouvelles valeurs |
+| Changement de valeur de placeholder | `placeholder-change` | `handleChange()` appelle `renderMermaidDiagrams()` avec les nouvelles valeurs |
 | Navigation de page Astro | `astro:page-load` | `init()` appelle `renderMermaidDiagrams()` pour la nouvelle page |
 
 ## Syntaxe de rédaction
@@ -129,4 +129,4 @@ flowchart LR
 ```
 ````
 
-Le plugin remark convertit cela en un div conteneur au moment du build. Le client le rend sous forme de SVG avec les valeurs de variables substituées.
+Le plugin remark convertit cela en un div conteneur au moment du build. Le client le rend sous forme de SVG avec les valeurs de placeholders substituées.

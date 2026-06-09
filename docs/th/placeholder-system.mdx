@@ -1,8 +1,8 @@
 ---
-title: ระบบตัวยึดตำแหน่ง
+title: ระบบ Placeholder
 description: >-
-  รูปแบบโทเค็น การจัดการสถานะ DOM walker ค่าที่คำนวณได้
-  และวิธีเพิ่มตัวยึดตำแหน่งใหม่
+  รูปแบบโทเค็น, การจัดการสถานะ, DOM walker, ค่าที่คำนวณได้, และวิธีเพิ่ม
+  placeholder ใหม่
 sidebar:
   order: 2
 i18n:
@@ -10,7 +10,7 @@ i18n:
   translator: machine
 ---
 
-ระบบตัวยึดตำแหน่ง (Placeholder) ช่วยให้ผู้อ่านสามารถปรับแต่งที่อยู่ IP, ASN และค่าอื่น ๆ ที่เฉพาะเจาะจงกับการติดตั้งใช้งานตลอดทั้งเอกสาร ผู้เขียนจะเขียนโทเค็นใน Markdown ของตน จากนั้นเบราว์เซอร์จะแทนที่ด้วยค่าที่ผู้ใช้ระบุ ณ เวลาทำงาน
+ระบบ placeholder ช่วยให้ผู้อ่านสามารถปรับแต่งที่อยู่ IP, ASN และค่าเฉพาะของการใช้งานต่างๆ ตลอดทั้งเอกสาร ผู้เขียนจะเขียนโทเค็นใน Markdown ของตน จากนั้นเบราว์เซอร์จะแทนที่ด้วยค่าที่ผู้ใช้กำหนดขณะรันไทม์
 
 ## รูปแบบโทเค็น
 
@@ -20,17 +20,17 @@ i18n:
 x([A-Z][A-Z0-9_]+)x
 ```
 
-โทเค็นเริ่มต้นและสิ้นสุดด้วย `x` ตัวพิมพ์เล็ก และประกอบด้วยตัวระบุตัวพิมพ์ใหญ่ ตัวอย่างเช่น `xCUSTOMER_ASNx` อ้างอิงถึงตัวยึดตำแหน่ง `CUSTOMER_ASN`
+โทเค็นเริ่มต้นและลงท้ายด้วยตัว `x` พิมพ์เล็ก และภายในเป็นตัวระบุตัวพิมพ์ใหญ่ ตัวอย่างเช่น `xCUSTOMER_ASNx` อ้างอิงถึง placeholder `CUSTOMER_ASN`
 
-Regex ถูกกำหนดไว้ใน `src/scripts/placeholder-dom.ts`:
+regex ถูกกำหนดไว้ใน `src/scripts/placeholder-dom.ts`:
 
 ```ts
 const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
 ```
 
-## การกำหนดตัวยึดตำแหน่ง
+## คำจำกัดความของ Placeholder
 
-ตัวยึดตำแหน่งทั้งหมดถูกประกาศไว้ใน `src/data/placeholders.json` แต่ละรายการมีโครงสร้างดังนี้:
+Placeholder ทั้งหมดถูกประกาศไว้ใน `src/data/placeholders.json` แต่ละรายการมีรูปแบบดังนี้:
 
 ```json
 {
@@ -44,42 +44,42 @@ const PH_REGEX = /x([A-Z][A-Z0-9_]+)x/g;
 
 | ฟิลด์ | จำเป็น | คำอธิบาย |
 |-------|----------|-------------|
-| `type` | ใช่ | `"text"` สำหรับอินพุตรูปแบบอิสระ, `"dropdown"` สำหรับเมนูแบบเลือก |
-| `default` | ใช่ | ค่าเริ่มต้นที่แสดงก่อนที่ผู้อ่านจะเปลี่ยนแปลงค่าใด ๆ |
-| `description` | ใช่ | ป้ายกำกับที่แสดงในแบบฟอร์ม |
-| `options` | เฉพาะสำหรับ dropdown | อาร์เรย์ของค่าที่อนุญาต |
+| `type` | ใช่ | `"text"` สำหรับช่องกรอกข้อมูลอิสระ, `"dropdown"` สำหรับเมนูแบบเลือก |
+| `default` | ใช่ | ค่าเริ่มต้นที่แสดงก่อนที่ผู้อ่านจะเปลี่ยนแปลงอะไร |
+| `description` | ใช่ | ป้ายกำกับที่แสดงในฟอร์ม |
+| `options` | เฉพาะ dropdown | อาร์เรย์ของค่าที่อนุญาต |
 
 ## การจัดการสถานะ
 
-`src/lib/placeholder-store.ts` จัดการสถานะตัวยึดตำแหน่งทั้งหมด
+`src/lib/placeholder-store.ts` จัดการสถานะ placeholder ทั้งหมด
 
-### ที่เก็บข้อมูล
+### การจัดเก็บ
 
-ค่าต่าง ๆ ถูกบันทึกถาวรใน `localStorage` ภายใต้คีย์ `f5xc-placeholders` สโตร์เปิดเผยฟังก์ชันสี่ตัว:
+ค่าต่างๆ ถูกบันทึกใน `localStorage` ภายใต้คีย์ `f5xc-placeholders` store เปิดเผยฟังก์ชันสี่ตัว:
 
 | ฟังก์ชัน | วัตถุประสงค์ |
 |----------|---------|
-| `getDefaults()` | ส่งคืนแผนที่ของคีย์ตัวยึดตำแหน่งทุกตัวไปยังค่า `default` จาก JSON |
-| `loadValues()` | อ่านจาก localStorage โดยสำรองด้วย `getDefaults()` |
-| `saveValues(values)` | เขียนแผนที่ปัจจุบันลงใน localStorage |
+| `getDefaults()` | คืนค่า map ของคีย์ placeholder ทุกตัวไปยังค่า `default` จาก JSON |
+| `loadValues()` | อ่านจาก localStorage, ใช้ `getDefaults()` เป็นค่าสำรอง |
+| `saveValues(values)` | เขียน map ปัจจุบันลง localStorage |
 | `clearValues()` | ลบรายการ localStorage |
 
 ### กลุ่มฟิลด์
 
-`FIELD_GROUPS` จัดระเบียบคีย์ตัวยึดตำแหน่งเป็นหมวดหมู่ที่มีป้ายกำกับสำหรับ UI ของแบบฟอร์ม:
+`FIELD_GROUPS` จัดระเบียบคีย์ placeholder เป็นส่วนที่มีป้ายกำกับสำหรับ UI ของฟอร์ม:
 
 ```ts
 export const FIELD_GROUPS: FieldGroup[] = [
   { label: 'Data Center & Scrubbing Centers', keys: ['DC_NAME', 'CENTER_1', 'CENTER_2'] },
   { label: 'Protected Prefixes', keys: ['PROTECTED_CIDR_V4', 'PROTECTED_NET_V4', ...] },
   { label: 'BGP', keys: ['CUSTOMER_ASN', 'F5_XC_ASN', 'BGP_PASSWORD'] },
-  // ... more groups
+  // ... กลุ่มอื่นๆ
 ];
 ```
 
 ### ค่าที่คำนวณได้
 
-บางค่าถูกคำนวณจากข้อมูลที่ผู้ใช้ป้อนแทนที่จะป้อนโดยตรง `getComputedValues()` คำนวณค่าเหล่านี้จากตารางค้นหา:
+ค่าบางค่าถูกคำนวณจากข้อมูลที่ผู้ใช้ป้อนแทนที่จะกรอกโดยตรง `getComputedValues()` คำนวณค่าเหล่านี้จากตารางค้นหา:
 
 ```ts
 const cidrToMask: Record<string, string> = {
@@ -89,18 +89,18 @@ const cidrToMask: Record<string, string> = {
 };
 ```
 
-ตัวยึดตำแหน่งที่คำนวณได้สองตัวถูกสร้างขึ้น:
+Placeholder ที่คำนวณได้มีสองตัว:
 
 | คีย์ที่คำนวณได้ | คำนวณจาก | ตัวอย่าง |
 |-------------|-------------|---------|
-| `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` ผ่านการค้นหา `cidrToMask` | `255.255.255.0` |
+| `PROTECTED_MASK_V4` | `PROTECTED_CIDR_V4` ผ่านตารางค้นหา `cidrToMask` | `255.255.255.0` |
 | `PROTECTED_PREFIX_V4` | `PROTECTED_NET_V4` + `PROTECTED_CIDR_V4` ผ่าน `cidrToShort` | `192.0.2.0/24` |
 
-`getAllValues()` รวมค่าที่ผู้ใช้ป้อนเข้ากับค่าที่คำนวณได้ เพื่อให้ได้แผนที่ที่สมบูรณ์สำหรับการแทนที่
+`getAllValues()` รวมค่าที่ผู้ใช้กรอกกับค่าที่คำนวณได้ ให้ map ที่สมบูรณ์สำหรับการแทนที่
 
 ### การส่งเหตุการณ์
 
-`emitChange()` ส่ง CustomEvent `placeholder-change` บน `document` โดยมีแผนที่ค่าทั้งหมดเป็น `detail`:
+`emitChange()` ส่ง CustomEvent `placeholder-change` บน `document` พร้อมด้วย map ค่าทั้งหมดเป็น `detail`:
 
 ```ts
 export function emitChange(values: Record<string, string>) {
@@ -110,18 +110,18 @@ export function emitChange(values: Record<string, string>) {
 }
 ```
 
-เหตุการณ์นี้ขับเคลื่อนทั้งการอัปเดต span ใน DOM และการเรนเดอร์ Mermaid ใหม่
+เหตุการณ์นี้ขับเคลื่อนทั้งการอัปเดต DOM span และการเรนเดอร์ Mermaid ใหม่
 
-## คอมโพเนนต์แบบฟอร์ม React
+## คอมโพเนนต์ฟอร์ม React
 
 `src/components/PlaceholderForm.tsx` ให้ UI สำหรับการแก้ไข
 
 - **สถานะ**: `useState` เริ่มต้นจาก `loadValues()`
-- **เมื่อเมาท์**: `useEffect` เรียก `emitChange()` เพื่อทริกเกอร์การแทนที่ DOM ครั้งแรก
-- **handleChange**: อัปเดตสถานะ React เรียก `saveValues()` และ `emitChange()`
-- **handleReset**: เรียก `clearValues()` รีเซ็ตสถานะเป็น `getDefaults()` และส่งการเปลี่ยนแปลง
-- **การเรนเดอร์**: วนซ้ำผ่าน `FIELD_GROUPS` เรนเดอร์ `<fieldset>` ต่อกลุ่ม แต่ละคีย์จะได้รับ `<input>` (ประเภท text) หรือ `<select>` (ประเภท dropdown)
-- **เลย์เอาต์**: แบบฟอร์มถูกห่อด้วยอิลิเมนต์ `<details>` โดยยุบเป็นค่าเริ่มต้น
+- **เมื่อ mount**: `useEffect` เรียก `emitChange()` เพื่อทริกเกอร์การแทนที่ DOM เริ่มต้น
+- **handleChange**: อัปเดตสถานะ React, เรียก `saveValues()` และ `emitChange()`
+- **handleReset**: เรียก `clearValues()`, รีเซ็ตสถานะเป็น `getDefaults()`, ส่งเหตุการณ์เปลี่ยนแปลง
+- **การเรนเดอร์**: วนซ้ำ `FIELD_GROUPS`, เรนเดอร์ `<fieldset>` ต่อกลุ่ม แต่ละคีย์จะได้ `<input>` (ประเภท text) หรือ `<select>` (ประเภท dropdown)
+- **เลย์เอาต์**: ฟอร์มถูกห่อด้วยอิลิเมนต์ `<details>` ซึ่งพับเก็บโดยค่าเริ่มต้น
 
 ## Astro Wrapper
 
@@ -135,28 +135,28 @@ export function emitChange(values: Record<string, string>) {
 </script>
 ```
 
-`client:only="react"` บอก Astro ให้ hydrate คอมโพเนนต์บนฝั่งไคลเอนต์เท่านั้น (ไม่มี SSR) แท็ก `<script>` นำเข้า DOM walker เพื่อให้ทำงานในทุกหน้าที่รวม wrapper นี้
+`client:only="react"` บอก Astro ให้ hydrate คอมโพเนนต์บนฝั่งไคลเอนต์เท่านั้น (ไม่มี SSR) แท็ก `<script>` นำเข้า DOM walker เพื่อให้มันทำงานในทุกหน้าที่รวม wrapper นี้
 
-Wrapper ยังแทรก CSS ทั่วไปสำหรับการจัดรูปแบบฟอร์ม (`.ph-form-wrapper`, `.ph-grid`, `.ph-value` ฯลฯ)
+Wrapper ยังฉีด CSS ทั่วไปสำหรับการจัดรูปแบบฟอร์ม (`.ph-form-wrapper`, `.ph-grid`, `.ph-value` เป็นต้น)
 
 ## DOM Walker
 
 `src/scripts/placeholder-dom.ts` จัดการการแทนที่โทเค็นฝั่งไคลเอนต์
 
-### การเดินสำรวจครั้งแรก
+### การเดินครั้งแรก
 
 เมื่อโหลดหน้า `init()` จะทำงาน:
 
-1. เลือก `.sl-markdown-content` เป็นรูท (สำรองด้วย `document.body`)
+1. เลือก `.sl-markdown-content` เป็น root (ใช้ `document.body` เป็นค่าสำรอง)
 2. เรียก `walkTextNodes(root, values)` ซึ่งใช้ `document.createTreeWalker` กับ `NodeFilter.SHOW_TEXT`
-3. สำหรับแต่ละโหนดข้อความที่ตรงกับ regex ของโทเค็น จะแบ่งออกเป็น document fragment ของโหนดข้อความธรรมดาและอิลิเมนต์ `<span data-ph="KEY" class="ph-value">`
-4. แทนที่โหนดข้อความดั้งเดิมด้วย fragment
+3. สำหรับแต่ละ text node ที่ตรงกับ regex ของโทเค็น จะแยกออกเป็น document fragment ของ text node ธรรมดาและอิลิเมนต์ `<span data-ph="KEY" class="ph-value">`
+4. แทนที่ text node เดิมด้วย fragment
 
-หลังจากการเดินสำรวจ DOM จะประกอบด้วย span ที่มีแอตทริบิวต์ `data-ph` แทนที่โทเค็นดิบ
+หลังจากการเดิน DOM จะมี span ที่มีแอตทริบิวต์ `data-ph` แทนที่โทเค็นดิบ
 
 ### การอัปเดตครั้งถัดไป
 
-เมื่อแบบฟอร์มส่งเหตุการณ์ `placeholder-change` `updateSpans()` จะทำงาน:
+เมื่อฟอร์มส่งเหตุการณ์ `placeholder-change` `updateSpans()` จะทำงาน:
 
 ```ts
 document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
@@ -167,7 +167,7 @@ document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
 });
 ```
 
-สิ่งนี้หลีกเลี่ยงการเดินสำรวจต้นไม้ใหม่ — โดยอัปเดตเนื้อหาข้อความของ span โดยตรง
+วิธีนี้หลีกเลี่ยงการเดิน tree ซ้ำ — มันอัปเดตเนื้อหาข้อความของ span โดยตรง
 
 ### ตัวรับฟังเหตุการณ์
 
@@ -176,9 +176,9 @@ document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
 | เหตุการณ์ | ตัวจัดการ | วัตถุประสงค์ |
 |-------|---------|---------|
 | `placeholder-change` | `handleChange` | อัปเดต span และเรนเดอร์ไดอะแกรม Mermaid ใหม่ |
-| `astro:page-load` | `init` | เดินสำรวจ DOM ใหม่หลังจากการนำทางฝั่งไคลเอนต์ของ Astro |
+| `astro:page-load` | `init` | เดิน DOM ใหม่หลังจากการนำทางฝั่งไคลเอนต์ของ Astro |
 
-## วิธีการ: เพิ่มตัวยึดตำแหน่งใหม่
+## วิธีการ: เพิ่ม Placeholder ใหม่
 
 1. **เพิ่มรายการ JSON** ใน `src/data/placeholders.json`:
    ```json
@@ -189,26 +189,26 @@ document.querySelectorAll<HTMLSpanElement>('span[data-ph]').forEach((span) => {
    }
    ```
 
-2. **เพิ่มคีย์ลงในกลุ่มฟิลด์** ใน `src/lib/placeholder-store.ts` โดยเพิ่มลงในอาร์เรย์ `keys` ของกลุ่มที่มีอยู่ หรือสร้างกลุ่มใหม่ใน `FIELD_GROUPS`
+2. **เพิ่มคีย์ไปยังกลุ่มฟิลด์** ใน `src/lib/placeholder-store.ts` สามารถเพิ่มไปยังอาร์เรย์ `keys` ของกลุ่มที่มีอยู่ หรือสร้างกลุ่มใหม่ใน `FIELD_GROUPS`
 
-3. **ใช้โทเค็นในเนื้อหา**: เขียน `xMY_NEW_VALUEx` ในไฟล์ `.mdx` ใดก็ได้ DOM walker จะแทนที่ ณ เวลาทำงาน
+3. **ใช้โทเค็นในเนื้อหา**: เขียน `xMY_NEW_VALUEx` ในไฟล์ `.mdx` ใดก็ได้ DOM walker จะแทนที่มันขณะรันไทม์
 
 ## วิธีการ: เพิ่มค่าที่คำนวณได้
 
-ค่าที่คำนวณได้ถูกคำนวณจากตัวยึดตำแหน่งอื่น ในการเพิ่ม:
+ค่าที่คำนวณได้ถูกคำนวณจาก placeholder อื่นๆ ในการเพิ่ม:
 
 1. เพิ่มตารางค้นหา (หากจำเป็น) ใน `src/lib/placeholder-store.ts` ตามรูปแบบของ `cidrToMask`
 
-2. ขยาย `getComputedValues()` เพื่อรวมคีย์ที่คำนวณใหม่:
+2. ขยาย `getComputedValues()` เพื่อรวมคีย์ที่คำนวณได้ใหม่:
    ```ts
    export function getComputedValues(values: Record<string, string>): Record<string, string> {
-     // ... existing logic
+     // ... ลอจิกที่มีอยู่
      return {
        PROTECTED_MASK_V4: mask,
        PROTECTED_PREFIX_V4: `${net}${short}`,
-       MY_COMPUTED: derivedValue,  // add here
+       MY_COMPUTED: derivedValue,  // เพิ่มตรงนี้
      };
    }
    ```
 
-3. ใช้ `xMY_COMPUTEDx` ในเนื้อหาเหมือนกับโทเค็นอื่น ๆ ค่าที่คำนวณได้ไม่จำเป็นต้องมีรายการใน `placeholders.json` หรือกลุ่มฟิลด์ — ค่าเหล่านี้จะไม่ปรากฏในแบบฟอร์ม
+3. ใช้ `xMY_COMPUTEDx` ในเนื้อหาเช่นเดียวกับโทเค็นอื่นๆ ค่าที่คำนวณได้ไม่จำเป็นต้องมีรายการใน `placeholders.json` หรือกลุ่มฟิลด์ — มันจะมองไม่เห็นในฟอร์ม

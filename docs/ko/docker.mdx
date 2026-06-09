@@ -8,7 +8,7 @@ i18n:
   translator: machine
 ---
 
-빌더는 Docker 이미지로 제공됩니다. 콘텐츠 저장소에서 Node.js나 Astro를 로컬에 설치하지 않고 이를 실행하여 정적 HTML을 생성합니다.
+빌더는 Docker 이미지로 제공됩니다. 콘텐츠 저장소는 Node.js나 Astro를 로컬에 설치하지 않고도 이를 실행하여 정적 HTML을 생성합니다.
 
 ## Dockerfile
 
@@ -38,7 +38,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 | 레이어 | 내용 | 별도 캐싱 이유 |
 |-------|------|----------------------|
-| 1 | `COPY package*.json` + `npm ci` | 의존성은 자주 변경되지 않으므로 이 레이어를 캐싱하면 매 빌드마다 재다운로드를 방지할 수 있습니다 |
+| 1 | `COPY package*.json` + `npm ci` | 의존성은 자주 변경되지 않으므로, 이 레이어를 캐싱하면 매 빌드마다 다시 다운로드하는 것을 방지합니다 |
 | 2 | `COPY . .` | 프레임워크 소스 코드 |
 | 3 | `rm -rf src/content/docs/*` | 주입된 콘텐츠만 표시되도록 플레이스홀더 콘텐츠를 정리합니다 |
 | 4 | `COPY entrypoint.sh` | 빌드 오케스트레이션 스크립트 |
@@ -54,7 +54,7 @@ npm install
 npm update
 ```
 
-테마 패키지와 모든 의존성이 최신 호환 버전인지 확인합니다.
+테마 패키지 및 모든 의존성이 최신 호환 버전인지 확인합니다.
 
 ### 2단계: 테마 설정 복사
 
@@ -63,7 +63,7 @@ cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.con
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
-테마 패키지에서 `astro.config.mjs`와 `content.config.ts`를 복사합니다. 테마는 Astro 설정의 단일 진실 공급원입니다 — 테마 시스템 설계에 대해서는 [아키텍처](../architecture/)를 참조하세요.
+테마 패키지에서 `astro.config.mjs`와 `content.config.ts`를 복사합니다. 테마는 Astro 설정의 단일 진실 공급원(single source of truth)입니다 — 테마 시스템 설계에 대해서는 [아키텍처](../architecture/)를 참조하세요.
 
 ### 3단계: 콘텐츠 주입
 
@@ -116,7 +116,7 @@ if [ -d "$OUTPUT_DIR" ]; then
 fi
 ```
 
-빌드된 사이트를 출력 마운트 포인트에 복사합니다.
+빌드된 사이트를 출력 마운트 지점에 복사합니다.
 
 ## 환경 변수
 
@@ -135,7 +135,7 @@ fi
 
 ## 로컬 사용법
 
-Docker를 사용하여 문서를 로컬에서 빌드하려면:
+Docker를 사용하여 로컬에서 문서를 빌드하려면:
 
 ```sh
 docker run --rm \
@@ -146,7 +146,7 @@ docker run --rm \
 
 이 명령은 로컬 `docs/` 디렉토리를 콘텐츠로 마운트하고 빌드된 사이트를 `output/`에 출력합니다.
 
-라이브 개발 서버 워크플로를 원하는 콘텐츠 작성자는 [콘텐츠 작성자를 위한 로컬 미리보기](../content-authors/)를 참조하세요.
+라이브 개발 서버 워크플로우를 원하는 콘텐츠 작성자는 [콘텐츠 작성자를 위한 로컬 미리보기](../content-authors/)를 참조하세요.
 
 ## 개발자: 로컬 개발 서버
 
@@ -161,7 +161,7 @@ cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
 ```
 
-`http://localhost:4321`을 열면 됩니다. 컴포넌트 및 플러그인 변경에 대해 핫 모듈 교체(HMR)가 작동합니다.
+`http://localhost:4321`을 열어주세요. 컴포넌트 및 플러그인 변경 시 핫 모듈 교체(HMR)가 작동합니다.
 
 :::note
 `astro.config.mjs`와 `content.config.ts`는 테마 패키지에서 제공되며 이 저장소에서 버전 관리되지 않습니다. 개발 서버를 실행하기 전에 `node_modules`에서 복사해야 합니다. Docker 빌드에서는 엔트리포인트가 이를 자동으로 처리합니다.
@@ -186,4 +186,4 @@ ghcr.io/f5xc-salesdemos/docs-builder
 | `latest` | `main`에서의 가장 최근 빌드 |
 | `<sha>` | 재현 가능한 빌드를 위한 전체 Git 커밋 SHA |
 
-이미지를 빌드하고 게시하는 워크플로에 대해서는 [CI/CD 및 거버넌스](../ci-cd/)를 참조하세요.
+이미지를 빌드하고 게시하는 워크플로우에 대해서는 [CI/CD 및 거버넌스](../ci-cd/)를 참조하세요.

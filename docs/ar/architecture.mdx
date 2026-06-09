@@ -1,6 +1,6 @@
 ---
-title: الهندسة المعمارية
-description: تصميم النظام، تخطيط الأدلة، نظام السمات، وخط أنابيب البناء لمنشئ الوثائق.
+title: البنية المعمارية
+description: تصميم النظام، هيكل المجلدات، نظام السمات، وخط أنابيب البناء لمنشئ التوثيق.
 sidebar:
   order: 5
 i18n:
@@ -10,11 +10,11 @@ i18n:
 
 ## نظرة عامة
 
-منشئ الوثائق هو نظام محاط بحاوية يعتمد على [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/). توفر مستودعات المحتوى ملفات Markdown/MDX؛ بينما يوفر المنشئ الإطار والسمة ومنطق البناء. يلتقي الجزءان في وقت البناء داخل حاوية Docker.
+منشئ التوثيق هو نظام مُحتوى في حاويات يعتمد على [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/). توفر مستودعات المحتوى ملفات Markdown/MDX؛ بينما يوفر المنشئ الإطار والسمة ومنطق البناء. يلتقي النصفان في وقت البناء داخل حاوية Docker.
 
 ## نموذج حقن المحتوى
 
-تحتفظ مستودعات المحتوى بوثائقها في دليل `docs/`. في وقت البناء، تقوم الحاوية بنسخ تلك الملفات إلى `src/content/docs/`، حيث تلتقطها مجموعة محتوى Astro.
+تحتفظ مستودعات المحتوى بتوثيقها في مجلد `docs/`. في وقت البناء، تنسخ الحاوية تلك الملفات إلى `src/content/docs/`، حيث تلتقطها مجموعة محتوى Astro.
 
 ```
 content-repo/
@@ -32,25 +32,25 @@ docs-builder/
 cp -r "$CONTENT_DIR"/* /app/src/content/docs/
 ```
 
-هذا يعني أن مستودع المنشئ نفسه يُشحن مع دليل `src/content/docs/` فارغ. يظهر المحتوى فقط في وقت البناء.
+هذا يعني أن مستودع المنشئ نفسه يُشحن مع مجلد `src/content/docs/` فارغ. يظهر المحتوى فقط في وقت البناء.
 
 ## نظام السمات
 
-تُنشر سمة Starlight كحزمة npm منفصلة. يستخدم `package.json` اسمًا مستعارًا في npm لربط اسم مختصر بحزمة السجل ذات النطاق:
+تُنشر سمة Starlight كحزمة npm منفصلة. يستخدم `package.json` اسمًا مستعارًا في npm لربط اسم مختصر بحزمة السجل المُحدد النطاق:
 
 ```json
 "@f5xc-salesdemos/docs-theme": "^1.29.0"
 ```
 
-تمتلك حزمة السمة ملف `astro.config.mjs`. في وقت البناء، تقوم نقطة الدخول بنسخه إلى جذر المشروع:
+تمتلك حزمة السمة ملف `astro.config.mjs`. في وقت البناء، ينسخه سكريبت نقطة الدخول إلى جذر المشروع:
 
 ```sh
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
-هذا يحافظ على مركزية الإعدادات — لا تحتفظ مستودعات المحتوى ولا المنشئ نفسه بإعدادات Astro الخاصة بهم.
+هذا يحافظ على مركزية التكوين — لا تحتفظ مستودعات المحتوى ولا المنشئ نفسه بتكوين Astro خاص بها.
 
-## تخطيط دليل المصدر
+## هيكل مجلد المصدر
 
 ```
 src/
@@ -58,19 +58,19 @@ src/
     PlaceholderForm.tsx          # نموذج React لتحرير قيم العناصر النائبة
     PlaceholderFormWrapper.astro # غلاف Astro، يحمّل سكريبت DOM وCSS العام
   content/
-    docs/                        # نقطة تحميل المحتوى المحقون
+    docs/                        # نقطة التحميل للمحتوى المحقون
   content.config.ts              # تعريف مجموعة محتوى Starlight
   data/
     placeholders.json            # تعريفات رموز العناصر النائبة
   lib/
-    placeholder-store.ts         # إدارة الحالة: تحميل، حفظ، حساب، إرسال
+    placeholder-store.ts         # إدارة الحالة: تحميل، حفظ، حساب، إصدار
   scripts/
-    placeholder-dom.ts           # متصفح DOM من جانب العميل ومحرك Mermaid
+    placeholder-dom.ts           # متجول DOM على جانب العميل ومُصيّر Mermaid
 ```
 
 ## مجموعة المحتوى
 
-يُعرّف `src/content.config.ts` مجموعة `docs` واحدة باستخدام محمّل ومخطط Starlight:
+يُعرّف `src/content.config.ts` مجموعة `docs` واحدة باستخدام مُحمّل ومخطط Starlight:
 
 ```ts
 import { defineCollection } from 'astro:content';
@@ -82,11 +82,11 @@ export const collections = {
 };
 ```
 
-أي ملف `.md` أو `.mdx` يوضع في `src/content/docs/` يصبح صفحة في الموقع المبني.
+أي ملف `.md` أو `.mdx` يُوضع في `src/content/docs/` يصبح صفحة في الموقع المبني.
 
-## مسار البناء
+## تدفق البناء
 
-يوضح المخطط التالي خط أنابيب البناء الكامل من البداية إلى النهاية عند تشغيل حاوية Docker:
+يوضح المخطط التالي خط أنابيب البناء من البداية إلى النهاية عند تشغيل حاوية Docker:
 
 ```mermaid
 flowchart LR
@@ -102,11 +102,11 @@ flowchart LR
 
 ## المعالجة في وقت البناء مقابل وقت العميل
 
-| الجانب | متى | كيف |
+| الشاغل | متى | كيف |
 |---------|------|-----|
-| MDX → HTML | وقت البناء | مترجم Astro |
+| MDX → HTML | وقت البناء | مُترجم Astro |
 | كتل كود Mermaid → عناصر div حاوية | وقت البناء | إضافة `remark-mermaid.mjs` (من `docs-theme`) |
-| رموز العناصر النائبة → عناصر span تفاعلية | وقت العميل | متصفح TreeWalker في `placeholder-dom.ts` |
-| تصيير Mermaid SVG | وقت العميل | استيراد `mermaid` من CDN في `placeholder-dom.ts` |
+| رموز العناصر النائبة → عناصر span تفاعلية | وقت العميل | متجول TreeWalker في `placeholder-dom.ts` |
+| تصيير SVG لـ Mermaid | وقت العميل | استيراد `mermaid` عبر CDN في `placeholder-dom.ts` |
 | حالة نموذج العناصر النائبة | وقت العميل | `placeholder-store.ts` + localStorage |
 | انتقالات صفحات Astro | وقت العميل | مستمع حدث `astro:page-load` |

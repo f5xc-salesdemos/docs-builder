@@ -10,7 +10,7 @@ i18n:
 
 ## 概述
 
-文档构建器是一个容器化的 [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) 系统。内容仓库提供 Markdown/MDX 文件；构建器提供框架、主题和构建逻辑。两部分在 Docker 容器中的构建阶段汇合。
+文档构建器是一个容器化的 [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) 系统。内容仓库提供 Markdown/MDX 文件；构建器提供框架、主题和构建逻辑。两者在构建时于 Docker 容器内汇合。
 
 ## 内容注入模型
 
@@ -32,11 +32,11 @@ docs-builder/
 cp -r "$CONTENT_DIR"/* /app/src/content/docs/
 ```
 
-这意味着构建器仓库本身自带一个空的 `src/content/docs/` 目录。内容仅在构建时出现。
+这意味着构建器仓库本身附带的 `src/content/docs/` 目录是空的。内容仅在构建时出现。
 
 ## 主题系统
 
-Starlight 主题作为独立的 npm 包发布。`package.json` 使用 npm 别名将短名称映射到作用域注册包：
+Starlight 主题作为独立的 npm 包发布。`package.json` 使用 npm 别名将短名称映射到作用域注册表包：
 
 ```json
 "@f5xc-salesdemos/docs-theme": "^1.29.0"
@@ -48,7 +48,7 @@ Starlight 主题作为独立的 npm 包发布。`package.json` 使用 npm 别名
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
-这使配置保持集中管理——内容仓库和构建器本身都不需要维护各自的 Astro 配置。
+这使得配置保持集中管理——内容仓库和构建器本身都不需要维护自己的 Astro 配置。
 
 ## 源码目录布局
 
@@ -63,14 +63,14 @@ src/
   data/
     placeholders.json            # 占位符令牌定义
   lib/
-    placeholder-store.ts         # 状态管理：加载、保存、计算、发送
+    placeholder-store.ts         # 状态管理：加载、保存、计算、发射
   scripts/
     placeholder-dom.ts           # 客户端 DOM 遍历器和 Mermaid 渲染器
 ```
 
 ## 内容集合
 
-`src/content.config.ts` 使用 Starlight 的加载器和模式定义了单个 `docs` 集合：
+`src/content.config.ts` 使用 Starlight 的加载器和 schema 定义了一个 `docs` 集合：
 
 ```ts
 import { defineCollection } from 'astro:content';
@@ -82,11 +82,11 @@ export const collections = {
 };
 ```
 
-放置在 `src/content/docs/` 中的任何 `.md` 或 `.mdx` 文件都会成为构建站点中的一个页面。
+任何放置在 `src/content/docs/` 中的 `.md` 或 `.mdx` 文件都会成为构建站点中的一个页面。
 
 ## 构建流程
 
-以下图表展示了 Docker 容器运行时的端到端构建流水线：
+下图展示了 Docker 容器运行时的端到端构建流水线：
 
 ```mermaid
 flowchart LR
@@ -100,7 +100,7 @@ flowchart LR
     H -->|cp| I[/output]
 ```
 
-## 构建时处理与客户端处理
+## 构建时与客户端处理
 
 | 关注点 | 时机 | 方式 |
 |---------|------|------|

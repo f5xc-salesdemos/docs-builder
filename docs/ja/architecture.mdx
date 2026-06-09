@@ -10,11 +10,11 @@ i18n:
 
 ## 概要
 
-ドキュメントビルダーは、コンテナ化された [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) システムです。コンテンツリポジトリが Markdown/MDX ファイルを提供し、ビルダーがフレームワーク、テーマ、およびビルドロジックを提供します。この2つの部分は、Docker コンテナ内のビルド時に統合されます。
+ドキュメントビルダーは、コンテナ化された [Astro](https://astro.build/) + [Starlight](https://starlight.astro.build/) システムです。コンテンツリポジトリが Markdown/MDX ファイルを提供し、ビルダーがフレームワーク、テーマ、ビルドロジックを提供します。この2つの要素は、Docker コンテナ内のビルド時に結合されます。
 
-## コンテンツインジェクションモデル
+## コンテンツ注入モデル
 
-コンテンツリポジトリは `docs/` ディレクトリにドキュメントを保持します。ビルド時にコンテナがそれらのファイルを `src/content/docs/` にコピーし、Astro のコンテンツコレクションがそれらを取得します。
+コンテンツリポジトリはドキュメントを `docs/` ディレクトリに保持します。ビルド時にコンテナがこれらのファイルを `src/content/docs/` にコピーし、Astro のコンテンツコレクションがそれらを取得します。
 
 ```
 content-repo/
@@ -26,29 +26,29 @@ docs-builder/
   src/content/docs/ ← 通常時は空 (.gitkeep)
 ```
 
-エントリポイントスクリプト（`docker/entrypoint.sh`）がコピーを実行します：
+エントリーポイントスクリプト（`docker/entrypoint.sh`）がコピーを実行します：
 
 ```sh
 cp -r "$CONTENT_DIR"/* /app/src/content/docs/
 ```
 
-これは、ビルダーリポジトリ自体が空の `src/content/docs/` ディレクトリを持った状態で提供されることを意味します。コンテンツはビルド時にのみ出現します。
+これは、ビルダーリポジトリ自体が空の `src/content/docs/` ディレクトリを持っていることを意味します。コンテンツはビルド時にのみ表示されます。
 
 ## テーマシステム
 
-Starlight テーマは個別の npm パッケージとして公開されています。`package.json` は npm エイリアスを使用して、短い名前をスコープ付きレジストリパッケージにマッピングしています：
+Starlight テーマは別の npm パッケージとして公開されています。`package.json` は npm エイリアスを使用して、短い名前をスコープ付きレジストリパッケージにマッピングしています：
 
 ```json
 "@f5xc-salesdemos/docs-theme": "^1.29.0"
 ```
 
-テーマパッケージが `astro.config.mjs` を所有しています。ビルド時にエントリポイントがそれをプロジェクトルートにコピーします：
+テーマパッケージは `astro.config.mjs` を所有しています。ビルド時にエントリーポイントがそれをプロジェクトルートにコピーします：
 
 ```sh
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
-これにより設定が一元管理されます — コンテンツリポジトリもビルダー自体も、独自の Astro 設定を保持する必要はありません。
+これにより設定が一元管理されます — コンテンツリポジトリもビルダー自体も、独自の Astro 設定を管理する必要がありません。
 
 ## ソースディレクトリ構成
 
@@ -56,21 +56,21 @@ cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.con
 src/
   components/
     PlaceholderForm.tsx          # プレースホルダー値を編集するための React フォーム
-    PlaceholderFormWrapper.astro # Astro ラッパー、DOM スクリプトとグローバル CSS を読み込む
+    PlaceholderFormWrapper.astro # Astro ラッパー、DOM スクリプトとグローバル CSS を読み込み
   content/
-    docs/                        # インジェクトされたコンテンツのマウントポイント
+    docs/                        # 注入されたコンテンツのマウントポイント
   content.config.ts              # Starlight コンテンツコレクション定義
   data/
     placeholders.json            # プレースホルダートークン定義
   lib/
-    placeholder-store.ts         # 状態管理: 読み込み、保存、計算、発行
+    placeholder-store.ts         # 状態管理：読み込み、保存、計算、発行
   scripts/
     placeholder-dom.ts           # クライアントサイド DOM ウォーカーと Mermaid レンダラー
 ```
 
 ## コンテンツコレクション
 
-`src/content.config.ts` は Starlight のローダーとスキーマを使用して単一の `docs` コレクションを定義します：
+`src/content.config.ts` は Starlight のローダーとスキーマを使用して単一の `docs` コレクションを定義しています：
 
 ```ts
 import { defineCollection } from 'astro:content';
@@ -86,7 +86,7 @@ export const collections = {
 
 ## ビルドフロー
 
-以下のダイアグラムは、Docker コンテナ実行時のエンドツーエンドのビルドパイプラインを示しています：
+以下の図は、Docker コンテナが実行される際のエンドツーエンドのビルドパイプラインを示しています：
 
 ```mermaid
 flowchart LR
@@ -105,7 +105,7 @@ flowchart LR
 | 対象 | タイミング | 方法 |
 |---------|------|-----|
 | MDX → HTML | ビルド時 | Astro コンパイラ |
-| Mermaid コードブロック → コンテナ div | ビルド時 | `remark-mermaid.mjs` プラグイン（`docs-theme` より） |
+| Mermaid コードブロック → コンテナ div | ビルド時 | `remark-mermaid.mjs` プラグイン（`docs-theme` から提供） |
 | プレースホルダートークン → インタラクティブ span | クライアント時 | `placeholder-dom.ts` TreeWalker |
 | Mermaid SVG レンダリング | クライアント時 | `placeholder-dom.ts` 内の `mermaid` CDN インポート |
 | プレースホルダーフォームの状態 | クライアント時 | `placeholder-store.ts` + localStorage |

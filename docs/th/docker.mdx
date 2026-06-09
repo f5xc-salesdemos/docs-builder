@@ -10,7 +10,7 @@ i18n:
   translator: machine
 ---
 
-ตัว builder จัดส่งในรูปแบบ Docker image โดย content repo จะรันเพื่อสร้าง static HTML โดยไม่ต้องติดตั้ง Node.js หรือ Astro ในเครื่อง
+ตัว builder จัดส่งในรูปแบบ Docker image โดย content repo จะเรียกใช้งานเพื่อสร้าง static HTML โดยไม่ต้องติดตั้ง Node.js หรือ Astro ในเครื่อง
 
 ## Dockerfile
 
@@ -38,16 +38,16 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 ### กลยุทธ์เลเยอร์
 
-| เลเยอร์ | สิ่งที่ทำ | เหตุผลที่แคชแยก |
-|---------|----------|----------------|
-| 1 | `COPY package*.json` + `npm ci` | Dependencies เปลี่ยนแปลงไม่บ่อย; การแคชเลเยอร์นี้ช่วยหลีกเลี่ยงการดาวน์โหลดซ้ำในทุกครั้งที่ build |
+| เลเยอร์ | สิ่งที่ทำ | เหตุผลที่แคชแยกกัน |
+|---------|----------|-------------------|
+| 1 | `COPY package*.json` + `npm ci` | Dependencies ไม่ค่อยเปลี่ยนแปลง การแคชเลเยอร์นี้ช่วยหลีกเลี่ยงการดาวน์โหลดซ้ำทุกครั้งที่ build |
 | 2 | `COPY . .` | ซอร์สโค้ดของ framework |
-| 3 | `rm -rf src/content/docs/*` | ล้างเนื้อหา placeholder ออกเพื่อให้แสดงเฉพาะเนื้อหาที่ถูก inject เข้ามา |
+| 3 | `rm -rf src/content/docs/*` | ล้างเนื้อหา placeholder ออก เพื่อให้แสดงเฉพาะเนื้อหาที่ถูก inject เข้ามา |
 | 4 | `COPY entrypoint.sh` | สคริปต์จัดการการ build |
 
 ## Entrypoint
 
-`docker/entrypoint.sh` จะรันทุกครั้งที่ container เริ่มทำงาน โดยดำเนินการตามขั้นตอนต่อไปนี้ตามลำดับ:
+`docker/entrypoint.sh` ทำงานทุกครั้งที่ container เริ่มต้น โดยดำเนินการตามขั้นตอนเหล่านี้ตามลำดับ:
 
 ### ขั้นตอนที่ 1: อัปเดต Dependencies
 
@@ -56,16 +56,16 @@ npm install
 npm update
 ```
 
-ตรวจสอบให้แน่ใจว่า theme package และ dependencies ทั้งหมดเป็นเวอร์ชันล่าสุดที่เข้ากันได้
+ทำให้มั่นใจว่า theme package และ dependencies ทั้งหมดเป็นเวอร์ชันล่าสุดที่เข้ากันได้
 
-### ขั้นตอนที่ 2: คัดลอก Theme Config
+### ขั้นตอนที่ 2: คัดลอกการตั้งค่า Theme
 
 ```sh
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
-คัดลอก `astro.config.mjs` และ `content.config.ts` จาก theme package โดย theme เป็นแหล่งข้อมูลเดียวที่เชื่อถือได้สำหรับการตั้งค่า Astro — ดู [สถาปัตยกรรม](../architecture/) สำหรับการออกแบบระบบ theme
+คัดลอก `astro.config.mjs` และ `content.config.ts` จาก theme package โดย theme เป็นแหล่งข้อมูลเดียวที่เป็นต้นฉบับสำหรับการตั้งค่า Astro — ดู [สถาปัตยกรรม](../architecture/) สำหรับการออกแบบระบบ theme
 
 ### ขั้นตอนที่ 3: Inject เนื้อหา
 
@@ -78,7 +78,7 @@ else
 fi
 ```
 
-คัดลอกเนื้อหาที่ mount เข้ามาไปยังไดเรกทอรี content collection ของ Astro จะออกพร้อม error หากไม่พบไดเรกทอรีเนื้อหา
+คัดลอกเนื้อหาที่ mount ไว้เข้าสู่ไดเรกทอรี content collection ของ Astro จะออกพร้อมข้อผิดพลาดหากไม่พบไดเรกทอรีเนื้อหา
 
 ### ขั้นตอนที่ 4: ดึงชื่อเรื่อง
 
@@ -89,7 +89,7 @@ if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
 fi
 ```
 
-หาก `DOCS_TITLE` ไม่ได้ตั้งค่าผ่านตัวแปรสภาพแวดล้อม จะดึงจากฟิลด์ frontmatter `title:` ของ `index.mdx`
+หาก `DOCS_TITLE` ไม่ได้ตั้งค่าผ่านตัวแปรสภาพแวดล้อม จะดึงจากฟิลด์ `title:` ใน frontmatter ของ `index.mdx`
 
 ### ขั้นตอนที่ 5: ดึง Base Path
 
@@ -100,7 +100,7 @@ if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
 fi
 ```
 
-คำนวณ base path ของเว็บไซต์จากชื่อ GitHub repository (เช่น `owner/my-docs` จะกลายเป็น `/my-docs`)
+อนุมาน base path ของเว็บไซต์จากชื่อ GitHub repository (เช่น `owner/my-docs` จะกลายเป็น `/my-docs`)
 
 ### ขั้นตอนที่ 6: Build
 
@@ -108,7 +108,7 @@ fi
 npm run build
 ```
 
-รัน `astro build` สร้างผลลัพธ์แบบ static ใน `/app/dist/`
+เรียกใช้ `astro build` เพื่อสร้างผลลัพธ์แบบ static ใน `/app/dist/`
 
 ### ขั้นตอนที่ 7: คัดลอกผลลัพธ์
 
@@ -118,26 +118,26 @@ if [ -d "$OUTPUT_DIR" ]; then
 fi
 ```
 
-คัดลอกเว็บไซต์ที่ build แล้วไปยังจุด mount ของผลลัพธ์
+คัดลอกเว็บไซต์ที่ build แล้วไปยังจุด mount ผลลัพธ์
 
 ## ตัวแปรสภาพแวดล้อม
 
 | ตัวแปร | ค่าเริ่มต้น | คำอธิบาย |
-|--------|------------|----------|
-| `CONTENT_DIR` | `/content/docs` | พาธไปยังไดเรกทอรีเนื้อหาที่ mount |
-| `OUTPUT_DIR` | `/output` | พาธที่เว็บไซต์ที่ build แล้วจะถูกคัดลอกไป |
-| `DOCS_TITLE` | *(ดึงจาก index.mdx)* | ชื่อเว็บไซต์ที่ส่งไปยัง Astro config |
+|--------|------------|---------|
+| `CONTENT_DIR` | `/content/docs` | เส้นทางไปยังไดเรกทอรีเนื้อหาที่ mount ไว้ |
+| `OUTPUT_DIR` | `/output` | เส้นทางที่เว็บไซต์ที่ build แล้วจะถูกคัดลอกไป |
+| `DOCS_TITLE` | *(ดึงจาก index.mdx)* | ชื่อเว็บไซต์ที่ส่งไปยังการตั้งค่า Astro |
 | `DOCS_DESCRIPTION` | *(ดึงจาก index.mdx)* | คำอธิบายเว็บไซต์จาก frontmatter |
-| `DOCS_BASE` | *(คำนวณจาก `GITHUB_REPOSITORY`)* | Base path สำหรับเว็บไซต์ (เช่น `/my-docs`) |
-| `DOCS_SITE` | *(คำนวณจาก `GITHUB_REPOSITORY_OWNER`)* | URL ของเว็บไซต์ที่ส่งไปยัง Astro config (เช่น `https://<owner>.github.io`) |
-| `GITHUB_REPOSITORY` | *(ตั้งค่าโดย GitHub Actions)* | สตริง `owner/repo` ที่ใช้คำนวณ `DOCS_BASE` |
+| `DOCS_BASE` | *(อนุมานจาก `GITHUB_REPOSITORY`)* | Base path สำหรับเว็บไซต์ (เช่น `/my-docs`) |
+| `DOCS_SITE` | *(อนุมานจาก `GITHUB_REPOSITORY_OWNER`)* | URL ของเว็บไซต์ที่ส่งไปยังการตั้งค่า Astro (เช่น `https://<owner>.github.io`) |
+| `GITHUB_REPOSITORY` | *(ตั้งค่าโดย GitHub Actions)* | สตริง `owner/repo` ที่ใช้อนุมาน `DOCS_BASE` |
 | `GENERATE_PDF` | `false` | เปิดใช้งานการสร้าง PDF หลัง build |
-| `PDF_FILENAME` | `docs` | ชื่อไฟล์ผลลัพธ์สำหรับ PDF ที่สร้าง |
+| `PDF_FILENAME` | `docs` | ชื่อไฟล์ผลลัพธ์สำหรับ PDF ที่สร้างขึ้น |
 | `LLMS_OPTIONAL_LINKS` | `[]` | JSON array ของ URL เว็บไซต์ย่อยสำหรับส่วน Optional ของ `llms.txt` |
 
 ## การใช้งานในเครื่อง
 
-เพื่อ build เอกสารในเครื่องโดยใช้ Docker:
+ในการ build เอกสารในเครื่องโดยใช้ Docker:
 
 ```sh
 docker run --rm \
@@ -146,13 +146,13 @@ docker run --rm \
   ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-คำสั่งนี้จะ mount ไดเรกทอรี `docs/` ในเครื่องเป็นเนื้อหาและเขียนเว็บไซต์ที่ build แล้วไปยัง `output/`
+คำสั่งนี้จะ mount ไดเรกทอรี `docs/` ในเครื่องเป็นเนื้อหา และเขียนเว็บไซต์ที่ build แล้วไปยัง `output/`
 
-สำหรับผู้เขียนเนื้อหาที่ต้องการเวิร์กโฟลว์ dev server แบบ live ดู [การพรีวิวในเครื่องสำหรับผู้เขียนเนื้อหา](../content-authors/)
+สำหรับผู้เขียนเนื้อหาที่ต้องการเวิร์กโฟลว์ dev server แบบ live ดู [การดูตัวอย่างในเครื่องสำหรับผู้เขียนเนื้อหา](../content-authors/)
 
 ## นักพัฒนา: Dev Server ในเครื่อง
 
-เมื่อทำงานกับตัว builder เอง (components, plugins, การรวม theme) คุณสามารถรัน dev server ของ Astro โดยตรงโดยไม่ต้องใช้ Docker:
+เมื่อทำงานกับตัว builder เอง (คอมโพเนนต์, ปลั๊กอิน, การรวม theme) คุณสามารถเรียกใช้ dev server ของ Astro โดยตรงโดยไม่ต้องใช้ Docker:
 
 ```sh
 npm ci
@@ -163,14 +163,14 @@ cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
 ```
 
-เปิด `http://localhost:4321` Hot module replacement (HMR) ทำงานได้กับการเปลี่ยนแปลง component และ plugin
+เปิด `http://localhost:4321` Hot module replacement (HMR) ทำงานได้สำหรับการเปลี่ยนแปลงคอมโพเนนต์และปลั๊กอิน
 
 :::note
-`astro.config.mjs` และ `content.config.ts` มาจาก theme package และไม่ได้อยู่ในระบบ version control ของ repo นี้ คุณต้องคัดลอกจาก `node_modules` ก่อนรัน dev server โดย entrypoint จะจัดการเรื่องนี้โดยอัตโนมัติใน Docker builds
+`astro.config.mjs` และ `content.config.ts` มาจาก theme package และไม่ได้ถูกควบคุมเวอร์ชันใน repo นี้ คุณต้องคัดลอกจาก `node_modules` ก่อนเรียกใช้ dev server โดย entrypoint จะจัดการสิ่งนี้โดยอัตโนมัติใน Docker builds
 :::
 
 :::note
-`src/content/docs/` จะถูกล้างในขั้นตอน build ของ image และถูก gitignore ให้วางเนื้อหาทดสอบที่นั่นด้วยตนเอง — มันจะไม่ถูก commit
+`src/content/docs/` จะถูกล้างในขั้นตอนการ build image และถูก gitignore ไว้ วางเนื้อหาทดสอบที่นั่นด้วยตนเอง — มันจะไม่ถูก commit
 :::
 
 ## Image Registry
@@ -181,11 +181,11 @@ Image ถูกเผยแพร่ไปยัง GitHub Container Registry:
 ghcr.io/f5xc-salesdemos/docs-builder
 ```
 
-มีสอง tag ที่ถูก push ในทุกครั้งที่ build:
+มีการ push สองแท็กในทุกการ build:
 
-| Tag | คำอธิบาย |
-|-----|----------|
-| `latest` | Build ล่าสุดจาก `main` |
-| `<sha>` | Git commit SHA เต็มสำหรับการ build ที่ทำซ้ำได้ |
+| แท็ก | คำอธิบาย |
+|------|---------|
+| `latest` | การ build ล่าสุดจาก `main` |
+| `<sha>` | SHA ของ Git commit แบบเต็มสำหรับการ build ที่ทำซ้ำได้ |
 
 ดู [CI/CD และการกำกับดูแล](../ci-cd/) สำหรับ workflow ที่ build และเผยแพร่ image

@@ -1,5 +1,5 @@
 ---
-title: Docker Build
+title: Docker-Build
 description: >-
   Dockerfile-Schichten, Entrypoint-Orchestrierung, Umgebungsvariablen und lokale
   Nutzung.
@@ -10,7 +10,7 @@ i18n:
   translator: machine
 ---
 
-Der Builder wird als Docker-Image bereitgestellt. Content-Repositorys verwenden ihn, um statisches HTML zu erzeugen, ohne Node.js oder Astro lokal installieren zu müssen.
+Der Builder wird als Docker-Image ausgeliefert. Content-Repositories verwenden ihn, um statisches HTML zu erzeugen, ohne Node.js oder Astro lokal installieren zu müssen.
 
 ## Dockerfile
 
@@ -42,12 +42,12 @@ ENTRYPOINT ["/entrypoint.sh"]
 |---------|--------|----------------------|
 | 1 | `COPY package*.json` + `npm ci` | Abhängigkeiten ändern sich selten; das Caching dieser Schicht vermeidet erneutes Herunterladen bei jedem Build |
 | 2 | `COPY . .` | Framework-Quellcode |
-| 3 | `rm -rf src/content/docs/*` | Entfernt Platzhalterinhalte, sodass nur injizierte Inhalte erscheinen |
+| 3 | `rm -rf src/content/docs/*` | Bereinigt Platzhalter-Inhalte, damit nur eingespeister Content erscheint |
 | 4 | `COPY entrypoint.sh` | Build-Orchestrierungsskript |
 
 ## Entrypoint
 
-`docker/entrypoint.sh` wird bei jedem Start des Containers ausgeführt. Es führt die folgenden Schritte der Reihe nach aus:
+`docker/entrypoint.sh` wird bei jedem Containerstart ausgeführt. Es führt die folgenden Schritte der Reihe nach aus:
 
 ### Schritt 1: Abhängigkeiten aktualisieren
 
@@ -67,7 +67,7 @@ cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/
 
 Kopiert `astro.config.mjs` und `content.config.ts` aus dem Theme-Paket. Das Theme ist die einzige Quelle der Wahrheit für die Astro-Konfiguration — siehe [Architektur](../architecture/) für das Design des Theme-Systems.
 
-### Schritt 3: Inhalte einfügen
+### Schritt 3: Inhalte einspeisen
 
 ```sh
 if [ -d "$CONTENT_DIR" ]; then
@@ -78,7 +78,7 @@ else
 fi
 ```
 
-Kopiert die gemounteten Inhalte in das Content-Collection-Verzeichnis von Astro. Bricht mit einem Fehler ab, wenn das Inhaltsverzeichnis fehlt.
+Kopiert die gemounteten Inhalte in das Content-Collection-Verzeichnis von Astro. Beendet sich mit einem Fehler, wenn das Content-Verzeichnis fehlt.
 
 ### Schritt 4: Titel extrahieren
 
@@ -89,7 +89,7 @@ if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
 fi
 ```
 
-Falls `DOCS_TITLE` nicht über die Umgebung gesetzt ist, wird er aus dem `title:`-Frontmatter-Feld der `index.mdx` extrahiert.
+Falls `DOCS_TITLE` nicht über eine Umgebungsvariable gesetzt ist, wird er aus dem `title:`-Frontmatter-Feld von `index.mdx` extrahiert.
 
 ### Schritt 5: Basispfad extrahieren
 
@@ -108,7 +108,7 @@ Leitet den Basispfad der Website aus dem GitHub-Repository-Namen ab (z. B. wird 
 npm run build
 ```
 
-Führt `astro build` aus und erzeugt die statische Ausgabe in `/app/dist/`.
+Führt `astro build` aus und erzeugt statische Ausgabe in `/app/dist/`.
 
 ### Schritt 7: Ausgabe kopieren
 
@@ -123,17 +123,17 @@ Kopiert die erstellte Website zum Ausgabe-Mount-Punkt.
 ## Umgebungsvariablen
 
 | Variable | Standard | Beschreibung |
-|----------|----------|--------------|
-| `CONTENT_DIR` | `/content/docs` | Pfad zum gemounteten Inhaltsverzeichnis |
-| `OUTPUT_DIR` | `/output` | Pfad, wohin die erstellte Website kopiert wird |
+|----------|----------|-------------|
+| `CONTENT_DIR` | `/content/docs` | Pfad zum gemounteten Content-Verzeichnis |
+| `OUTPUT_DIR` | `/output` | Pfad, in den die erstellte Website kopiert wird |
 | `DOCS_TITLE` | *(aus index.mdx extrahiert)* | Website-Titel, der an die Astro-Konfiguration übergeben wird |
 | `DOCS_DESCRIPTION` | *(aus index.mdx extrahiert)* | Website-Beschreibung aus dem Frontmatter |
 | `DOCS_BASE` | *(abgeleitet von `GITHUB_REPOSITORY`)* | Basispfad für die Website (z. B. `/my-docs`) |
 | `DOCS_SITE` | *(abgeleitet von `GITHUB_REPOSITORY_OWNER`)* | Website-URL, die an die Astro-Konfiguration übergeben wird (z. B. `https://<owner>.github.io`) |
-| `GITHUB_REPOSITORY` | *(von GitHub Actions gesetzt)* | `owner/repo`-Zeichenkette zur Ableitung von `DOCS_BASE` |
+| `GITHUB_REPOSITORY` | *(von GitHub Actions gesetzt)* | `owner/repo`-Zeichenkette, die zur Ableitung von `DOCS_BASE` verwendet wird |
 | `GENERATE_PDF` | `false` | PDF-Generierung nach dem Build aktivieren |
 | `PDF_FILENAME` | `docs` | Ausgabedateiname für das generierte PDF |
-| `LLMS_OPTIONAL_LINKS` | `[]` | JSON-Array von Unter-Website-URLs für den `llms.txt`-Abschnitt "Optional" |
+| `LLMS_OPTIONAL_LINKS` | `[]` | JSON-Array von Child-Site-URLs für den "Optional"-Abschnitt in `llms.txt` |
 
 ## Lokale Nutzung
 
@@ -146,13 +146,13 @@ docker run --rm \
   ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-Dies mountet das lokale `docs/`-Verzeichnis als Inhalt und schreibt die erstellte Website nach `output/`.
+Dies mountet das lokale `docs/`-Verzeichnis als Content und schreibt die erstellte Website nach `output/`.
 
-Für Content-Autoren, die einen Live-Dev-Server-Workflow bevorzugen, siehe [Lokale Vorschau für Content-Autoren](../content-authors/).
+Für Content-Autoren, die einen Live-Entwicklungsserver-Workflow wünschen, siehe [Lokale Vorschau für Content-Autoren](../content-authors/).
 
-## Entwickler: Lokaler Dev-Server
+## Entwickler: Lokaler Entwicklungsserver
 
-Wenn Sie am Builder selbst arbeiten (Komponenten, Plugins, Theme-Integration), können Sie den Dev-Server von Astro direkt ohne Docker ausführen:
+Wenn Sie am Builder selbst arbeiten (Komponenten, Plugins, Theme-Integration), können Sie Astros Entwicklungsserver direkt ohne Docker ausführen:
 
 ```sh
 npm ci
@@ -166,11 +166,11 @@ DOCS_TITLE="Dev Test" npx astro dev --host
 Öffnen Sie `http://localhost:4321`. Hot Module Replacement (HMR) funktioniert für Komponenten- und Plugin-Änderungen.
 
 :::note
-`astro.config.mjs` und `content.config.ts` stammen aus dem Theme-Paket und werden in diesem Repository nicht versionskontrolliert. Sie müssen sie vor dem Start des Dev-Servers aus `node_modules` kopieren. Der Entrypoint erledigt dies bei Docker-Builds automatisch.
+`astro.config.mjs` und `content.config.ts` stammen aus dem Theme-Paket und werden in diesem Repository nicht versioniert. Sie müssen sie aus `node_modules` kopieren, bevor Sie den Entwicklungsserver starten. Der Entrypoint erledigt dies bei Docker-Builds automatisch.
 :::
 
 :::note
-`src/content/docs/` wird zum Zeitpunkt des Image-Builds geleert und ist in `.gitignore` eingetragen. Platzieren Sie dort manuell Testinhalte — diese werden nicht committet.
+`src/content/docs/` wird beim Image-Build geleert und ist in der Gitignore-Datei eingetragen. Platzieren Sie Testinhalte dort manuell — sie werden nicht committet.
 :::
 
 ## Image-Registry
@@ -184,8 +184,8 @@ ghcr.io/f5xc-salesdemos/docs-builder
 Bei jedem Build werden zwei Tags gepusht:
 
 | Tag | Beschreibung |
-|-----|--------------|
+|-----|-------------|
 | `latest` | Neuester Build von `main` |
 | `<sha>` | Vollständiger Git-Commit-SHA für reproduzierbare Builds |
 
-Siehe [CI/CD und Governance](../ci-cd/) für den Workflow, der das Image erstellt und veröffentlicht.
+Siehe [CI/CD und Governance](../ci-cd/) für den Workflow, der das Image baut und veröffentlicht.

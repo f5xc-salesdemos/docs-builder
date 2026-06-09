@@ -8,7 +8,7 @@ i18n:
   translator: machine
 ---
 
-构建器支持 [Mermaid](https://mermaid.js.org/) 图表，采用两阶段处理：remark 插件在构建时准备标记，客户端渲染器生成 SVG。
+构建器通过两阶段处理支持 [Mermaid](https://mermaid.js.org/) 图表：remark 插件在构建时准备标记，客户端渲染器生成 SVG。
 
 ## Remark 插件
 
@@ -39,8 +39,8 @@ visit(tree, 'code', (node, index, parent) => {
 |--------|-------|
 | 匹配的节点类型 | `lang === 'mermaid'` 的 `code` 节点 |
 | HTML 实体转义 | `&`、`<`、`>`、`"` — 防止 `data-mermaid-src` 中的属性注入 |
-| 输出结构 | `<div class="mermaid-container">`，其 `data-mermaid-src` 属性包含转义后的源代码 |
-| 回退内容 | `<pre class="mermaid">` 包含原始源代码（在 JS 渲染前可见） |
+| 输出结构 | `<div class="mermaid-container">`，带有包含转义源码的 `data-mermaid-src` 属性 |
+| 回退内容 | `<pre class="mermaid">` 包含原始源码（在 JS 渲染之前可见） |
 
 ## 客户端渲染
 
@@ -48,7 +48,7 @@ visit(tree, 'code', (node, index, parent) => {
 
 ### Mermaid 导入
 
-Mermaid 按需从 CDN 加载——不包含在打包文件中：
+Mermaid 按需从 CDN 加载 — 不会打包到项目中：
 
 ```ts
 const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default;
@@ -78,26 +78,26 @@ mermaid.initialize({
 
 对于每个 `.mermaid-container` 元素：
 
-1. 从 `data-mermaid-src` 读取原始图表源代码
-2. 对源代码执行占位符替换（见下文）
+1. 从 `data-mermaid-src` 读取原始图表源码
+2. 对源码执行占位符替换（见下文）
 3. 清空容器并移除所有 `data-processed` 属性
 4. 使用随机 ID 调用 `mermaid.render()` 生成 SVG
 5. 在渲染的 `<svg>` 元素上设置 `backgroundColor: 'white'`
 
 ## 图表中的占位符替换
 
-在渲染之前，图表源代码会经过与 DOM 遍历器相同的 `substituteText()` 函数处理（遍历器机制详见[占位符系统](../placeholder-system/)）：
+在渲染之前，图表源码会经过与 DOM 遍历器相同的 `substituteText()` 函数处理（DOM 遍历器机制详见[占位符系统](../placeholder-system/)）：
 
 ```ts
 const template = container.getAttribute('data-mermaid-src') || '';
 const substituted = substituteText(template, values);
 ```
 
-这意味着像 `xCUSTOMER_ASNx` 这样的占位符标记可以在 Mermaid 图表定义中使用。当用户在表单中更改值时，`placeholder-change` 事件会触发使用更新后的值对所有图表进行完整的重新渲染。
+这意味着 `xCUSTOMER_ASNx` 等占位符标记可以在 Mermaid 图表定义中使用。当用户在表单中更改值时，`placeholder-change` 事件会触发所有图表使用更新后的值进行完整重新渲染。
 
 ## 错误处理
 
-如果 `mermaid.render()` 抛出异常（例如，由于图表源代码中的语法错误），catch 块会直接在容器中显示错误信息：
+如果 `mermaid.render()` 抛出异常（例如，由于图表源码中的语法错误），catch 块会直接在容器中显示错误：
 
 ```ts
 } catch (e) {
@@ -105,7 +105,7 @@ const substituted = substituteText(template, values);
 }
 ```
 
-这使得编写错误可见，而不会破坏页面的其余部分。
+这使编写错误可见，而不会影响页面其余部分的正常运行。
 
 ## 重新渲染
 
@@ -118,7 +118,7 @@ const substituted = substituteText(template, values);
 
 ## 编写语法
 
-使用 `mermaid` 语言标签编写标准的围栏代码块：
+使用 `mermaid` 语言标签编写标准围栏代码块：
 
 ````markdown
 ```mermaid
@@ -127,4 +127,4 @@ flowchart LR
 ```
 ````
 
-remark 插件在构建时将其转换为容器 div。客户端将其渲染为替换了占位符值的 SVG。
+remark 插件会在构建时将其转换为容器 div。客户端会在替换占位符值后将其渲染为 SVG。

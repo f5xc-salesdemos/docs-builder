@@ -27,17 +27,17 @@ docker run --rm -it \
   ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-Ouvrez **http://localhost:4321** une fois que le serveur a démarré.
+Ouvrez **http://localhost:4321** une fois le serveur démarré.
 
 :::note
-Les modifications de fichiers sur votre hôte nécessitent un redémarrage du conteneur. Arrêtez-le avec `Ctrl+C` et relancez la commande pour prendre en compte les modifications.
+Les modifications de fichiers sur votre machine hôte nécessitent un redémarrage du conteneur. Arrêtez-le avec `Ctrl+C` et relancez la commande pour prendre en compte les modifications.
 :::
 
 ## Images et ressources statiques
 
 Placez les images dans un sous-répertoire comme `docs/images/`. Le conteneur les détecte automatiquement — aucun montage de volume supplémentaire n'est nécessaire.
 
-Référencez-les dans votre MDX avec un chemin relatif à la racine :
+Référencez-les dans votre MDX avec un chemin absolu depuis la racine :
 
 ```mdx
 ![Architecture diagram](/images/architecture.png)
@@ -49,13 +49,13 @@ Référencez-les dans votre MDX avec un chemin relatif à la racine :
 
 **Le contenu n'apparaît pas** — Vérifiez que `docs/index.mdx` existe. Consultez la sortie du conteneur pour un message `ERROR: No content found`.
 
-**Image obsolète** — Tirez la dernière version :
+**Image obsolète** — Récupérez la dernière version :
 
 ```sh
 docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-## Lectures complémentaires
+## Pour aller plus loin
 
-- [Docker Build](../docker/) — Détails de l'image, variables d'environnement et builds de production
-- [Architecture](../architecture/) — Modèle d'injection de contenu et conception du système de thèmes
+- [Build Docker](../docker/) — Détails de l'image, variables d'environnement et builds de production
+- [Architecture](../architecture/) — Modèle d'injection de contenu et conception du système de thème

@@ -1,6 +1,6 @@
 ---
-title: 内容作者的本地预览
-description: 使用单个 Docker 命令在本地预览您的文档。
+title: 内容作者本地预览
+description: 使用单条 Docker 命令在本地预览您的文档。
 sidebar:
   order: 7
 i18n:
@@ -13,7 +13,7 @@ i18n:
 ## 前提条件
 
 - 已安装并运行 [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- 已在本地克隆您的内容仓库，且包含一个 `docs/` 目录，其中至少包含 `index.mdx`
+- 已在本地克隆内容仓库，其中包含一个 `docs/` 目录，且至少包含 `index.mdx` 文件
 
 ## 启动开发服务器
 
@@ -35,7 +35,7 @@ docker run --rm -it \
 
 ## 图片和静态资源
 
-将图片放置在子目录中，例如 `docs/images/`。容器会自动检测这些文件——无需额外的卷挂载。
+将图片放在子目录中，例如 `docs/images/`。容器会自动检测这些文件——无需额外的卷挂载。
 
 在 MDX 中使用根相对路径引用它们：
 
@@ -49,7 +49,7 @@ docker run --rm -it \
 
 **内容未显示** — 确认 `docs/index.mdx` 文件存在。检查容器输出中是否有 `ERROR: No content found` 消息。
 
-**镜像过旧** — 拉取最新版本：
+**镜像过期** — 拉取最新版本：
 
 ```sh
 docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest

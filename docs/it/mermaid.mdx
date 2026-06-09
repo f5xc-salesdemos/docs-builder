@@ -1,8 +1,8 @@
 ---
 title: Diagrammi Mermaid
 description: >-
-  Plugin remark, rendering lato client tramite CDN, sostituzione dei segnaposto
-  nei diagrammi e gestione degli errori.
+  Plugin remark, rendering lato client via CDN, sostituzione dei segnaposto nei
+  diagrammi e gestione degli errori.
 sidebar:
   order: 3
 i18n:
@@ -42,15 +42,15 @@ Dettagli chiave:
 | Tipo di nodo corrispondente | Nodi `code` dove `lang === 'mermaid'` |
 | Escaping delle entità HTML | `&`, `<`, `>`, `"` — previene l'injection negli attributi in `data-mermaid-src` |
 | Struttura dell'output | `<div class="mermaid-container">` con attributo `data-mermaid-src` contenente il sorgente con escaping |
-| Contenuto di fallback | `<pre class="mermaid">` con il sorgente grezzo (visibile fino al rendering JS) |
+| Contenuto di fallback | `<pre class="mermaid">` con il sorgente grezzo (visibile fino a quando JS non esegue il rendering) |
 
 ## Rendering Lato Client
 
 La funzione `renderMermaidDiagrams()` in `src/scripts/placeholder-dom.ts` gestisce la generazione SVG nel browser.
 
-### Import di Mermaid
+### Importazione di Mermaid
 
-Mermaid viene caricato on demand da un CDN — non è incluso nel bundle:
+Mermaid viene caricato su richiesta da un CDN — non è incluso nel bundle:
 
 ```ts
 const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default;
@@ -88,7 +88,7 @@ Per ogni elemento `.mermaid-container`:
 
 ## Sostituzione dei Segnaposto nei Diagrammi
 
-Prima del rendering, il sorgente del diagramma passa attraverso la stessa funzione `substituteText()` utilizzata dal DOM walker (vedi [Sistema di Segnaposto](../placeholder-system/) per il meccanismo del walker):
+Prima del rendering, il sorgente del diagramma passa attraverso la stessa funzione `substituteText()` utilizzata dal walker del DOM (vedi [Sistema dei Segnaposto](../placeholder-system/) per il meccanismo del walker):
 
 ```ts
 const template = container.getAttribute('data-mermaid-src') || '';
@@ -99,7 +99,7 @@ Questo significa che i token segnaposto come `xCUSTOMER_ASNx` funzionano all'int
 
 ## Gestione degli Errori
 
-Se `mermaid.render()` genera un'eccezione (ad esempio, a causa di un errore di sintassi nel sorgente del diagramma), il blocco catch mostra l'errore direttamente nel container:
+Se `mermaid.render()` genera un'eccezione (ad esempio, a causa di un errore di sintassi nel sorgente del diagramma), il blocco catch visualizza l'errore direttamente nel container:
 
 ```ts
 } catch (e) {
@@ -107,7 +107,7 @@ Se `mermaid.render()` genera un'eccezione (ad esempio, a causa di un errore di s
 }
 ```
 
-Questo rende gli errori di authoring visibili senza compromettere il resto della pagina.
+Questo rende visibili gli errori di authoring senza compromettere il resto della pagina.
 
 ## Re-rendering
 
@@ -115,8 +115,8 @@ I diagrammi vengono ri-renderizzati in due situazioni:
 
 | Trigger | Evento | Cosa succede |
 |---------|--------|-------------|
-| Cambio del valore dei segnaposto | `placeholder-change` | `handleChange()` chiama `renderMermaidDiagrams()` con i nuovi valori |
-| Navigazione di pagina Astro | `astro:page-load` | `init()` chiama `renderMermaidDiagrams()` per la nuova pagina |
+| Modifica dei valori dei segnaposto | `placeholder-change` | `handleChange()` chiama `renderMermaidDiagrams()` con i nuovi valori |
+| Navigazione pagina Astro | `astro:page-load` | `init()` chiama `renderMermaidDiagrams()` per la nuova pagina |
 
 ## Sintassi di Authoring
 

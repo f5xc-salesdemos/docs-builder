@@ -1,5 +1,5 @@
 ---
-title: Compilación Docker
+title: Construcción con Docker
 description: >-
   Capas del Dockerfile, orquestación del entrypoint, variables de entorno y uso
   local.
@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-El builder se distribuye como una imagen Docker. Los repositorios de contenido lo ejecutan para producir HTML estático sin instalar Node.js o Astro localmente.
+El constructor se distribuye como una imagen Docker. Los repositorios de contenido lo ejecutan para producir HTML estático sin necesidad de instalar Node.js o Astro localmente.
 
 ## Dockerfile
 
-`docker/Dockerfile` utiliza una compilación en múltiples pasos sobre `node:24-alpine`:
+`docker/Dockerfile` utiliza una construcción de múltiples pasos sobre `node:24-alpine`:
 
 ```dockerfile
 FROM node:24-alpine AS builder
@@ -40,14 +40,14 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 | Capa | Qué contiene | Por qué se cachea por separado |
 |------|-------------|-------------------------------|
-| 1 | `COPY package*.json` + `npm ci` | Las dependencias cambian con poca frecuencia; cachear esta capa evita volver a descargarlas en cada compilación |
+| 1 | `COPY package*.json` + `npm ci` | Las dependencias cambian con poca frecuencia; cachear esta capa evita volver a descargarlas en cada construcción |
 | 2 | `COPY . .` | Código fuente del framework |
 | 3 | `rm -rf src/content/docs/*` | Limpia cualquier contenido de ejemplo para que solo aparezca el contenido inyectado |
-| 4 | `COPY entrypoint.sh` | Script de orquestación de la compilación |
+| 4 | `COPY entrypoint.sh` | Script de orquestación de la construcción |
 
 ## Entrypoint
 
-`docker/entrypoint.sh` se ejecuta cada vez que el contenedor se inicia. Realiza los siguientes pasos en orden:
+`docker/entrypoint.sh` se ejecuta cada vez que el contenedor inicia. Realiza los siguientes pasos en orden:
 
 ### Paso 1: Actualizar dependencias
 
@@ -58,14 +58,14 @@ npm update
 
 Asegura que el paquete del tema y todas las dependencias estén en sus últimas versiones compatibles.
 
-### Paso 2: Copiar configuración del tema
+### Paso 2: Copiar la configuración del tema
 
 ```sh
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
-Copia `astro.config.mjs` y `content.config.ts` del paquete del tema. El tema es la fuente única de verdad para la configuración de Astro — consulte [Arquitectura](../architecture/) para el diseño del sistema de temas.
+Copia `astro.config.mjs` y `content.config.ts` desde el paquete del tema. El tema es la fuente única de verdad para la configuración de Astro — consulte [Arquitectura](../architecture/) para el diseño del sistema de temas.
 
 ### Paso 3: Inyectar contenido
 
@@ -78,9 +78,9 @@ else
 fi
 ```
 
-Copia el contenido montado en el directorio de la colección de contenido de Astro. Sale con un error si el directorio de contenido no existe.
+Copia el contenido montado en el directorio de colecciones de contenido de Astro. Sale con un error si el directorio de contenido no existe.
 
-### Paso 4: Extraer título
+### Paso 4: Extraer el título
 
 ```sh
 if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
@@ -89,9 +89,9 @@ if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
 fi
 ```
 
-Si `DOCS_TITLE` no está definido mediante variable de entorno, lo extrae del campo `title:` del frontmatter de `index.mdx`.
+Si `DOCS_TITLE` no está definido a través de una variable de entorno, lo extrae del campo `title:` del frontmatter de `index.mdx`.
 
-### Paso 5: Extraer ruta base
+### Paso 5: Extraer la ruta base
 
 ```sh
 if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
@@ -102,7 +102,7 @@ fi
 
 Deriva la ruta base del sitio a partir del nombre del repositorio de GitHub (por ejemplo, `owner/my-docs` se convierte en `/my-docs`).
 
-### Paso 6: Compilar
+### Paso 6: Construir
 
 ```sh
 npm run build
@@ -110,7 +110,7 @@ npm run build
 
 Ejecuta `astro build`, produciendo la salida estática en `/app/dist/`.
 
-### Paso 7: Copiar salida
+### Paso 7: Copiar la salida
 
 ```sh
 if [ -d "$OUTPUT_DIR" ]; then
@@ -118,26 +118,26 @@ if [ -d "$OUTPUT_DIR" ]; then
 fi
 ```
 
-Copia el sitio compilado al punto de montaje de salida.
+Copia el sitio construido al punto de montaje de salida.
 
 ## Variables de entorno
 
-| Variable | Valor por defecto | Descripción |
-|----------|-------------------|-------------|
+| Variable | Valor predeterminado | Descripción |
+|----------|---------------------|-------------|
 | `CONTENT_DIR` | `/content/docs` | Ruta al directorio de contenido montado |
-| `OUTPUT_DIR` | `/output` | Ruta donde se copia el sitio compilado |
+| `OUTPUT_DIR` | `/output` | Ruta donde se copia el sitio construido |
 | `DOCS_TITLE` | *(extraído de index.mdx)* | Título del sitio pasado a la configuración de Astro |
 | `DOCS_DESCRIPTION` | *(extraído de index.mdx)* | Descripción del sitio desde el frontmatter |
 | `DOCS_BASE` | *(derivado de `GITHUB_REPOSITORY`)* | Ruta base del sitio (por ejemplo, `/my-docs`) |
 | `DOCS_SITE` | *(derivado de `GITHUB_REPOSITORY_OWNER`)* | URL del sitio pasada a la configuración de Astro (por ejemplo, `https://<owner>.github.io`) |
 | `GITHUB_REPOSITORY` | *(definido por GitHub Actions)* | Cadena `owner/repo` utilizada para derivar `DOCS_BASE` |
-| `GENERATE_PDF` | `false` | Habilitar la generación de PDF después de la compilación |
+| `GENERATE_PDF` | `false` | Habilitar la generación de PDF después de la construcción |
 | `PDF_FILENAME` | `docs` | Nombre del archivo de salida para el PDF generado |
-| `LLMS_OPTIONAL_LINKS` | `[]` | Array JSON de URLs de sitios hijos para la sección Optional de `llms.txt` |
+| `LLMS_OPTIONAL_LINKS` | `[]` | Array JSON de URLs de sitios secundarios para la sección Optional de `llms.txt` |
 
 ## Uso local
 
-Para compilar documentación localmente usando Docker:
+Para construir documentación localmente usando Docker:
 
 ```sh
 docker run --rm \
@@ -146,13 +146,13 @@ docker run --rm \
   ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-Esto monta el directorio local `docs/` como contenido y escribe el sitio compilado en `output/`.
+Esto monta el directorio local `docs/` como contenido y escribe el sitio construido en `output/`.
 
 Para autores de contenido que deseen un flujo de trabajo con servidor de desarrollo en vivo, consulte [Vista previa local para autores de contenido](../content-authors/).
 
 ## Desarrollador: Servidor de desarrollo local
 
-Cuando trabaje en el builder en sí (componentes, plugins, integración del tema), puede ejecutar el servidor de desarrollo de Astro directamente sin Docker:
+Cuando se trabaja en el propio constructor (componentes, plugins, integración del tema), puede ejecutar el servidor de desarrollo de Astro directamente sin Docker:
 
 ```sh
 npm ci
@@ -166,11 +166,11 @@ DOCS_TITLE="Dev Test" npx astro dev --host
 Abra `http://localhost:4321`. El reemplazo de módulos en caliente (HMR) funciona para cambios en componentes y plugins.
 
 :::note
-`astro.config.mjs` y `content.config.ts` provienen del paquete del tema y no están bajo control de versiones en este repositorio. Debe copiarlos desde `node_modules` antes de ejecutar el servidor de desarrollo. El entrypoint maneja esto automáticamente en las compilaciones Docker.
+`astro.config.mjs` y `content.config.ts` provienen del paquete del tema y no están bajo control de versiones en este repositorio. Debe copiarlos desde `node_modules` antes de ejecutar el servidor de desarrollo. El entrypoint maneja esto automáticamente en las construcciones con Docker.
 :::
 
 :::note
-`src/content/docs/` se vacía durante la compilación de la imagen y está en el gitignore. Coloque contenido de prueba allí manualmente — no será incluido en los commits.
+`src/content/docs/` se vacía durante la construcción de la imagen y está incluido en gitignore. Coloque contenido de prueba allí manualmente — no será confirmado en el repositorio.
 :::
 
 ## Registro de imágenes
@@ -181,11 +181,11 @@ La imagen se publica en GitHub Container Registry:
 ghcr.io/f5xc-salesdemos/docs-builder
 ```
 
-Se publican dos etiquetas en cada compilación:
+Se publican dos etiquetas en cada construcción:
 
 | Etiqueta | Descripción |
 |----------|-------------|
-| `latest` | Compilación más reciente desde `main` |
-| `<sha>` | SHA completo del commit de Git para compilaciones reproducibles |
+| `latest` | Construcción más reciente desde `main` |
+| `<sha>` | SHA completo del commit de Git para construcciones reproducibles |
 
-Consulte [CI/CD y gobernanza](../ci-cd/) para el flujo de trabajo que compila y publica la imagen.
+Consulte [CI/CD y Gobernanza](../ci-cd/) para el flujo de trabajo que construye y publica la imagen.

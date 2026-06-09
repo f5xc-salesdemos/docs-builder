@@ -1,21 +1,18 @@
 ---
 title: بناء Docker
-description: >-
-  Dockerfile layers, entrypoint orchestration, environment variables, and local
-  usage.
+description: طبقات Dockerfile، تنسيق نقطة الدخول، متغيرات البيئة، والاستخدام المحلي.
 sidebar:
   order: 4
-  label: بناء Docker
 i18n:
   sourceHash: f8453f94aa45
   translator: machine
 ---
 
-يُوزَّع المُنشئ كصورة Docker. تقوم مستودعات المحتوى بتشغيله لإنتاج HTML ثابت دون الحاجة لتثبيت Node.js أو Astro محلياً.
+يُشحن المُنشئ كصورة Docker. تقوم مستودعات المحتوى بتشغيله لإنتاج HTML ثابت دون الحاجة لتثبيت Node.js أو Astro محلياً.
 
-## Dockerfile
+## ملف Dockerfile
 
-يستخدم `docker/Dockerfile` بناءً متعدد المراحل على `node:24-alpine`:
+يستخدم `docker/Dockerfile` بناءً متعدد الخطوات على `node:24-alpine`:
 
 ```dockerfile
 FROM node:24-alpine AS builder
@@ -41,10 +38,10 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 | الطبقة | المحتوى | سبب التخزين المؤقت المنفصل |
 |--------|---------|---------------------------|
-| 1 | `COPY package*.json` + `npm ci` | تتغير التبعيات بشكل نادر؛ تخزين هذه الطبقة مؤقتاً يتجنب إعادة التنزيل في كل عملية بناء |
+| 1 | `COPY package*.json` + `npm ci` | تتغير التبعيات نادراً؛ تخزين هذه الطبقة مؤقتاً يتجنب إعادة التنزيل عند كل بناء |
 | 2 | `COPY . .` | الكود المصدري لإطار العمل |
-| 3 | `rm -rf src/content/docs/*` | يُنظف أي محتوى مؤقت بحيث يظهر فقط المحتوى المُحقن |
-| 4 | `COPY entrypoint.sh` | سكربت تنسيق عملية البناء |
+| 3 | `rm -rf src/content/docs/*` | ينظف أي محتوى نائب بحيث يظهر فقط المحتوى المحقون |
+| 4 | `COPY entrypoint.sh` | سكريبت تنسيق البناء |
 
 ## نقطة الدخول
 
@@ -66,7 +63,7 @@ cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.con
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
-ينسخ `astro.config.mjs` و `content.config.ts` من حزمة القالب. القالب هو المصدر الوحيد للحقيقة لإعدادات Astro — انظر [الهندسة المعمارية](../architecture/) لتصميم نظام القالب.
+ينسخ `astro.config.mjs` و `content.config.ts` من حزمة القالب. القالب هو المصدر الوحيد للحقيقة لإعدادات Astro — راجع [البنية المعمارية](../architecture/) لتصميم نظام القالب.
 
 ### الخطوة 3: حقن المحتوى
 
@@ -79,7 +76,7 @@ else
 fi
 ```
 
-ينسخ المحتوى المُركَّب إلى مجلد مجموعة محتوى Astro. يخرج مع خطأ إذا كان مجلد المحتوى مفقوداً.
+ينسخ المحتوى المُربوط إلى مجلد مجموعة محتوى Astro. يخرج مع خطأ إذا كان مجلد المحتوى مفقوداً.
 
 ### الخطوة 4: استخراج العنوان
 
@@ -90,7 +87,7 @@ if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
 fi
 ```
 
-إذا لم يتم تعيين `DOCS_TITLE` عبر البيئة، يستخرجه من حقل `title:` في frontmatter الخاص بـ `index.mdx`.
+إذا لم يكن `DOCS_TITLE` مُعيّناً عبر البيئة، يستخرجه من حقل `title:` في البيانات الوصفية الأمامية لملف `index.mdx`.
 
 ### الخطوة 5: استخراج المسار الأساسي
 
@@ -101,7 +98,7 @@ if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
 fi
 ```
 
-يشتق المسار الأساسي للموقع من اسم مستودع GitHub (مثلاً، `owner/my-docs` يصبح `/my-docs`).
+يشتق مسار الموقع الأساسي من اسم مستودع GitHub (مثلاً، `owner/my-docs` يصبح `/my-docs`).
 
 ### الخطوة 6: البناء
 
@@ -109,7 +106,7 @@ fi
 npm run build
 ```
 
-يُشغّل `astro build`، وينتج مخرجات ثابتة في `/app/dist/`.
+يشغّل `astro build`، وينتج مخرجات ثابتة في `/app/dist/`.
 
 ### الخطوة 7: نسخ المخرجات
 
@@ -119,21 +116,21 @@ if [ -d "$OUTPUT_DIR" ]; then
 fi
 ```
 
-ينسخ الموقع المبني إلى نقطة تركيب المخرجات.
+ينسخ الموقع المبني إلى نقطة ربط المخرجات.
 
 ## متغيرات البيئة
 
 | المتغير | القيمة الافتراضية | الوصف |
 |---------|-------------------|-------|
-| `CONTENT_DIR` | `/content/docs` | مسار مجلد المحتوى المُركَّب |
+| `CONTENT_DIR` | `/content/docs` | مسار مجلد المحتوى المُربوط |
 | `OUTPUT_DIR` | `/output` | المسار الذي يُنسخ إليه الموقع المبني |
-| `DOCS_TITLE` | *(يُستخرج من index.mdx)* | عنوان الموقع المُمرر إلى إعدادات Astro |
-| `DOCS_DESCRIPTION` | *(يُستخرج من index.mdx)* | وصف الموقع من frontmatter |
+| `DOCS_TITLE` | *(يُستخرج من index.mdx)* | عنوان الموقع المُمرر لإعدادات Astro |
+| `DOCS_DESCRIPTION` | *(يُستخرج من index.mdx)* | وصف الموقع من البيانات الوصفية الأمامية |
 | `DOCS_BASE` | *(يُشتق من `GITHUB_REPOSITORY`)* | المسار الأساسي للموقع (مثلاً، `/my-docs`) |
-| `DOCS_SITE` | *(يُشتق من `GITHUB_REPOSITORY_OWNER`)* | عنوان URL للموقع المُمرر إلى إعدادات Astro (مثلاً، `https://<owner>.github.io`) |
+| `DOCS_SITE` | *(يُشتق من `GITHUB_REPOSITORY_OWNER`)* | عنوان URL للموقع المُمرر لإعدادات Astro (مثلاً، `https://<owner>.github.io`) |
 | `GITHUB_REPOSITORY` | *(يُعيّنه GitHub Actions)* | سلسلة `owner/repo` المستخدمة لاشتقاق `DOCS_BASE` |
 | `GENERATE_PDF` | `false` | تفعيل إنشاء PDF بعد البناء |
-| `PDF_FILENAME` | `docs` | اسم ملف الإخراج لملف PDF المُنشأ |
+| `PDF_FILENAME` | `docs` | اسم ملف المخرجات لملف PDF المُنشأ |
 | `LLMS_OPTIONAL_LINKS` | `[]` | مصفوفة JSON لعناوين URL للمواقع الفرعية لقسم Optional في `llms.txt` |
 
 ## الاستخدام المحلي
@@ -147,13 +144,13 @@ docker run --rm \
   ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-يُركّب هذا مجلد `docs/` المحلي كمحتوى ويكتب الموقع المبني إلى `output/`.
+يربط هذا مجلد `docs/` المحلي كمحتوى ويكتب الموقع المبني إلى `output/`.
 
-لمؤلفي المحتوى الذين يريدون سير عمل خادم تطوير مباشر، انظر [المعاينة المحلية لمؤلفي المحتوى](../content-authors/).
+لمؤلفي المحتوى الذين يريدون سير عمل خادم تطوير مباشر، راجع [المعاينة المحلية لمؤلفي المحتوى](../content-authors/).
 
 ## للمطورين: خادم التطوير المحلي
 
-عند العمل على المُنشئ نفسه (المكونات، الإضافات، تكامل القالب)، يمكنك تشغيل خادم تطوير Astro مباشرة دون Docker:
+عند العمل على المُنشئ نفسه (المكونات، الإضافات، تكامل القالب)، يمكنك تشغيل خادم تطوير Astro مباشرة بدون Docker:
 
 ```sh
 npm ci
@@ -164,29 +161,29 @@ cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
 ```
 
-افتح `http://localhost:4321`. يعمل الاستبدال السريع للوحدات (HMR) لتغييرات المكونات والإضافات.
+افتح `http://localhost:4321`. يعمل الاستبدال الساخن للوحدات (HMR) مع تغييرات المكونات والإضافات.
 
 :::note
-`astro.config.mjs` و `content.config.ts` يأتيان من حزمة القالب ولا يخضعان للتحكم في الإصدارات في هذا المستودع. يجب نسخهما من `node_modules` قبل تشغيل خادم التطوير. تتعامل نقطة الدخول مع هذا تلقائياً في عمليات بناء Docker.
+يأتي `astro.config.mjs` و `content.config.ts` من حزمة القالب ولا يخضعان للتحكم بالإصدارات في هذا المستودع. يجب نسخهما من `node_modules` قبل تشغيل خادم التطوير. تتعامل نقطة الدخول مع هذا تلقائياً في بناءات Docker.
 :::
 
 :::note
-يتم تفريغ `src/content/docs/` في وقت بناء الصورة ويتم تجاهله في git. ضع محتوى الاختبار هناك يدوياً — لن يتم تأكيده في المستودع.
+يتم تفريغ `src/content/docs/` عند بناء الصورة ويُضاف إلى gitignore. ضع محتوى الاختبار هناك يدوياً — لن يتم تضمينه في الإيداعات.
 :::
 
 ## سجل الصور
 
-تُنشر الصورة في GitHub Container Registry:
+تُنشر الصورة في سجل حاويات GitHub:
 
 ```
 ghcr.io/f5xc-salesdemos/docs-builder
 ```
 
-يتم دفع وسمين في كل عملية بناء:
+يتم دفع وسمين عند كل بناء:
 
 | الوسم | الوصف |
 |-------|-------|
 | `latest` | أحدث بناء من فرع `main` |
-| `<sha>` | معرّف SHA الكامل لعملية الإيداع في Git للبناءات القابلة للإعادة |
+| `<sha>` | معرّف SHA الكامل لإيداع Git للبناءات القابلة للتكرار |
 
-انظر [CI/CD والحوكمة](../ci-cd/) لسير العمل الذي يبني وينشر الصورة.
+راجع [التكامل المستمر/النشر المستمر والحوكمة](../ci-cd/) لسير العمل الذي يبني وينشر الصورة.

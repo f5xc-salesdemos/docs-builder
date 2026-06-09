@@ -1,6 +1,6 @@
 ---
 title: Docker 构建
-description: Dockerfile 层、入口点编排、环境变量和本地使用。
+description: Dockerfile 分层、入口点编排、环境变量及本地使用。
 sidebar:
   order: 4
 i18n:
@@ -8,7 +8,7 @@ i18n:
   translator: machine
 ---
 
-构建器以 Docker 镜像的形式发布。内容仓库通过运行它来生成静态 HTML，无需在本地安装 Node.js 或 Astro。
+构建器以 Docker 镜像的形式交付。内容仓库通过运行它来生成静态 HTML，无需在本地安装 Node.js 或 Astro。
 
 ## Dockerfile
 
@@ -34,7 +34,7 @@ RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 ```
 
-### 层策略
+### 分层策略
 
 | 层 | 内容 | 为何单独缓存 |
 |-------|------|----------------------|
@@ -45,7 +45,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 ## 入口点
 
-`docker/entrypoint.sh` 在容器每次启动时运行。它按顺序执行以下步骤：
+`docker/entrypoint.sh` 在每次容器启动时运行。它按以下顺序执行这些步骤：
 
 ### 步骤 1：更新依赖
 
@@ -54,7 +54,7 @@ npm install
 npm update
 ```
 
-确保主题包和所有依赖都处于最新的兼容版本。
+确保主题包和所有依赖项都处于最新的兼容版本。
 
 ### 步骤 2：复制主题配置
 
@@ -63,7 +63,7 @@ cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.con
 cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
-从主题包中复制 `astro.config.mjs` 和 `content.config.ts`。主题是 Astro 配置的唯一事实来源——请参阅[架构](../architecture/)了解主题系统设计。
+从主题包中复制 `astro.config.mjs` 和 `content.config.ts`。主题是 Astro 配置的唯一权威来源——有关主题系统设计请参阅[架构](../architecture/)。
 
 ### 步骤 3：注入内容
 
@@ -76,7 +76,7 @@ else
 fi
 ```
 
-将挂载的内容复制到 Astro 的内容集合目录中。如果内容目录不存在，则以错误退出。
+将挂载的内容复制到 Astro 的内容集合目录中。如果内容目录缺失，则输出错误并退出。
 
 ### 步骤 4：提取标题
 
@@ -87,7 +87,7 @@ if [ -z "$DOCS_TITLE" ] && [ -f /app/src/content/docs/index.mdx ]; then
 fi
 ```
 
-如果 `DOCS_TITLE` 未通过环境变量设置，则从 `index.mdx` 的 `title:` frontmatter 字段中提取。
+如果未通过环境变量设置 `DOCS_TITLE`，则从 `index.mdx` 的 `title:` frontmatter 字段中提取。
 
 ### 步骤 5：提取基础路径
 
@@ -98,7 +98,7 @@ if [ -z "$DOCS_BASE" ] && [ -n "$GITHUB_REPOSITORY" ]; then
 fi
 ```
 
-从 GitHub 仓库名称派生站点基础路径（例如，`owner/my-docs` 变为 `/my-docs`）。
+从 GitHub 仓库名称推导站点基础路径（例如，`owner/my-docs` 变为 `/my-docs`）。
 
 ### 步骤 6：构建
 
@@ -123,13 +123,13 @@ fi
 | 变量 | 默认值 | 描述 |
 |----------|---------|-------------|
 | `CONTENT_DIR` | `/content/docs` | 挂载的内容目录路径 |
-| `OUTPUT_DIR` | `/output` | 构建好的站点复制到的路径 |
+| `OUTPUT_DIR` | `/output` | 构建后站点的复制目标路径 |
 | `DOCS_TITLE` | *（从 index.mdx 提取）* | 传递给 Astro 配置的站点标题 |
 | `DOCS_DESCRIPTION` | *（从 index.mdx 提取）* | 来自 frontmatter 的站点描述 |
-| `DOCS_BASE` | *（从 `GITHUB_REPOSITORY` 派生）* | 站点的基础路径（例如 `/my-docs`） |
-| `DOCS_SITE` | *（从 `GITHUB_REPOSITORY_OWNER` 派生）* | 传递给 Astro 配置的站点 URL（例如 `https://<owner>.github.io`） |
-| `GITHUB_REPOSITORY` | *（由 GitHub Actions 设置）* | 用于派生 `DOCS_BASE` 的 `owner/repo` 字符串 |
-| `GENERATE_PDF` | `false` | 在构建后启用 PDF 生成 |
+| `DOCS_BASE` | *（从 `GITHUB_REPOSITORY` 推导）* | 站点的基础路径（例如 `/my-docs`） |
+| `DOCS_SITE` | *（从 `GITHUB_REPOSITORY_OWNER` 推导）* | 传递给 Astro 配置的站点 URL（例如 `https://<owner>.github.io`） |
+| `GITHUB_REPOSITORY` | *（由 GitHub Actions 设置）* | 用于推导 `DOCS_BASE` 的 `owner/repo` 字符串 |
+| `GENERATE_PDF` | `false` | 构建后启用 PDF 生成 |
 | `PDF_FILENAME` | `docs` | 生成的 PDF 的输出文件名 |
 | `LLMS_OPTIONAL_LINKS` | `[]` | 用于 `llms.txt` Optional 部分的子站点 URL JSON 数组 |
 
@@ -144,13 +144,13 @@ docker run --rm \
   ghcr.io/f5xc-salesdemos/docs-builder:latest
 ```
 
-这会将本地 `docs/` 目录作为内容挂载，并将构建好的站点写入 `output/`。
+这会将本地的 `docs/` 目录作为内容挂载，并将构建好的站点写入 `output/`。
 
-对于需要实时开发服务器工作流的内容作者，请参阅[内容作者本地预览](../content-authors/)。
+对于希望使用实时开发服务器工作流的内容作者，请参阅[内容作者本地预览](../content-authors/)。
 
 ## 开发者：本地开发服务器
 
-在构建器本身（组件、插件、主题集成）上进行开发时，您可以直接运行 Astro 的开发服务器而无需 Docker：
+在开发构建器本身（组件、插件、主题集成）时，您可以直接运行 Astro 的开发服务器而无需 Docker：
 
 ```sh
 npm ci
@@ -161,29 +161,29 @@ cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
 ```
 
-打开 `http://localhost:4321`。热模块替换（HMR）适用于组件和插件的更改。
+打开 `http://localhost:4321`。热模块替换（HMR）支持组件和插件更改的即时更新。
 
 :::note
-`astro.config.mjs` 和 `content.config.ts` 来自主题包，不在本仓库中进行版本控制。在运行开发服务器之前，您必须从 `node_modules` 中复制它们。入口点在 Docker 构建中会自动处理此操作。
+`astro.config.mjs` 和 `content.config.ts` 来自主题包，不在此仓库中进行版本控制。在运行开发服务器之前，您必须从 `node_modules` 中复制它们。入口点在 Docker 构建中会自动处理此操作。
 :::
 
 :::note
-`src/content/docs/` 在镜像构建时被清空并已加入 gitignore。请手动将测试内容放置在此处——它不会被提交。
+`src/content/docs/` 在镜像构建时会被清空，并已添加到 gitignore 中。请手动将测试内容放置在此处——它不会被提交。
 :::
 
 ## 镜像仓库
 
-该镜像发布到 GitHub Container Registry：
+镜像发布到 GitHub Container Registry：
 
 ```
 ghcr.io/f5xc-salesdemos/docs-builder
 ```
 
-每次构建都会推送两个标签：
+每次构建会推送两个标签：
 
 | 标签 | 描述 |
 |-----|-------------|
-| `latest` | 来自 `main` 分支的最新构建 |
-| `<sha>` | 完整的 Git 提交 SHA，用于可复现构建 |
+| `latest` | 从 `main` 分支构建的最新版本 |
+| `<sha>` | 完整的 Git 提交 SHA，用于可复现的构建 |
 
-请参阅 [CI/CD 与治理](../ci-cd/)了解构建和发布镜像的工作流。
+有关构建和发布镜像的工作流，请参阅 [CI/CD 与治理](../ci-cd/)。

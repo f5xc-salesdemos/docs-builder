@@ -2,7 +2,7 @@
 title: Lokale Vorschau für Inhaltsautoren
 description: >-
   Sehen Sie Ihre Dokumentation lokal mit einem einzigen Docker-Befehl in der
-  Vorschau.
+  Vorschau an.
 sidebar:
   order: 7
 i18n:
@@ -10,14 +10,14 @@ i18n:
   translator: machine
 ---
 
-Sehen Sie Ihre Dokumentation lokal in der Vorschau, bevor Sie Änderungen pushen. Alles, was Sie benötigen, ist Docker und ein `docs/`-Verzeichnis.
+Sehen Sie Ihre Dokumentation lokal in der Vorschau an, bevor Sie Änderungen pushen. Alles, was Sie benötigen, ist Docker und ein `docs/`-Verzeichnis.
 
 ## Voraussetzungen
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installiert und gestartet
-- Ihr Content-Repository lokal geklont mit einem `docs/`-Verzeichnis, das mindestens `index.mdx` enthält
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installiert und ausgeführt
+- Ihr Content-Repository lokal geklont mit einem `docs/`-Verzeichnis, das mindestens eine `index.mdx` enthält
 
-## Den Entwicklungsserver starten
+## Entwicklungsserver starten
 
 Führen Sie im Stammverzeichnis Ihres Content-Repositories folgenden Befehl aus:
 
@@ -35,11 +35,11 @@ docker run --rm -it \
 Dateiänderungen auf Ihrem Host erfordern einen Neustart des Containers. Stoppen Sie ihn mit `Ctrl+C` und führen Sie den Befehl erneut aus, um Änderungen zu übernehmen.
 :::
 
-## Bilder und statische Assets
+## Bilder und statische Ressourcen
 
 Platzieren Sie Bilder in einem Unterverzeichnis wie `docs/images/`. Der Container erkennt diese automatisch — keine zusätzlichen Volume-Mounts erforderlich.
 
-Referenzieren Sie sie in Ihrem MDX mit einem root-relativen Pfad:
+Referenzieren Sie sie in Ihrem MDX mit einem wurzelrelativen Pfad:
 
 ```mdx
 ![Architecture diagram](/images/architecture.png)
@@ -47,7 +47,7 @@ Referenzieren Sie sie in Ihrem MDX mit einem root-relativen Pfad:
 
 ## Fehlerbehebung
 
-**Port bereits belegt** — Verwenden Sie einen anderen Host-Port: `-p 8080:4321`, und öffnen Sie dann `http://localhost:8080`.
+**Port bereits in Verwendung** — Ordnen Sie einen anderen Host-Port zu: `-p 8080:4321`, dann öffnen Sie `http://localhost:8080`.
 
 **Inhalte werden nicht angezeigt** — Überprüfen Sie, ob `docs/index.mdx` existiert. Prüfen Sie die Container-Ausgabe auf eine `ERROR: No content found`-Meldung.
 
