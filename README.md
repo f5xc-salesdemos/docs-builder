@@ -7,18 +7,10 @@
 
 Containerized Astro + Starlight documentation build system
 
+
 ## Documentation
 
 Full documentation is available at **[https://f5xc-salesdemos.github.io/docs-builder/](https://f5xc-salesdemos.github.io/docs-builder/)**.
-
-## Getting Started
-
-```bash
-git clone https://github.com/f5xc-salesdemos/docs-builder.git
-```
-
-See the [documentation](https://f5xc-salesdemos.github.io/docs-builder/) for detailed setup
-and usage guides.
 
 ## Contributing
 
