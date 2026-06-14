@@ -1,4 +1,4 @@
-<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><title>hero</title>
 <style>
   svg { fill: var(--color-accent, #4f73ff); }
   @media (prefers-color-scheme: dark) {
