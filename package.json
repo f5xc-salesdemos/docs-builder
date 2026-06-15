@@ -11,7 +11,7 @@
   "dependencies": {
     "@astrojs/react": "^5.0.3",
     "@astrojs/starlight": "^0.38.3",
-    "@f5xc-salesdemos/docs-theme": "^2.15.1",
+    "@f5xc-salesdemos/docs-theme": "^3.5.9",
     "@f5xc-salesdemos/icons-aws": "*",
     "@f5xc-salesdemos/icons-azure": "*",
     "@f5xc-salesdemos/icons-carbon": "*",
