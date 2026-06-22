@@ -81,7 +81,7 @@ fi
 if [ -z "$LLMS_CONFIG" ] && [ -f /app/src/content/docs/llms-config.json ]; then
   LLMS_CONFIG=$(cat /app/src/content/docs/llms-config.json)
   # Validate JSON before export
-  if ! echo "$LLMS_CONFIG" | python3 -m json.tool >/dev/null 2>&1; then
+  if ! printf '%s' "$LLMS_CONFIG" | python3 -m json.tool >/dev/null 2>&1; then
     echo "WARNING: llms-config.json is invalid JSON — ignoring, using defaults"
     unset LLMS_CONFIG
   else
@@ -95,7 +95,7 @@ fi
 if [ -z "$LLMS_FEDERATED_SITES" ] && [ -f /app/src/content/docs/llms-federated-sites.json ]; then
   LLMS_FEDERATED_SITES=$(cat /app/src/content/docs/llms-federated-sites.json)
   # Validate JSON before export
-  if ! echo "$LLMS_FEDERATED_SITES" | python3 -m json.tool >/dev/null 2>&1; then
+  if ! printf '%s' "$LLMS_FEDERATED_SITES" | python3 -m json.tool >/dev/null 2>&1; then
     echo "WARNING: llms-federated-sites.json is invalid JSON — ignoring, using defaults"
     unset LLMS_FEDERATED_SITES
   else
@@ -109,7 +109,7 @@ fi
 if [ -z "$LLMS_FEDERATED_SITE_CATEGORIES" ] && [ -f /app/src/content/docs/llms-federated-site-categories.json ]; then
   LLMS_FEDERATED_SITE_CATEGORIES=$(cat /app/src/content/docs/llms-federated-site-categories.json)
 
-  if ! echo "$LLMS_FEDERATED_SITE_CATEGORIES" | python3 -m json.tool >/dev/null 2>&1; then
+  if ! printf '%s' "$LLMS_FEDERATED_SITE_CATEGORIES" | python3 -m json.tool >/dev/null 2>&1; then
     echo "WARNING: llms-federated-site-categories.json is invalid JSON — ignoring, using defaults"
     unset LLMS_FEDERATED_SITE_CATEGORIES
   else
@@ -122,7 +122,7 @@ fi
 # Read OpenAPI specs configuration for starlight-openapi plugin
 if [ -z "$OPENAPI_SPECS_CONFIG" ] && [ -f /app/src/content/docs/openapi-specs-config.json ]; then
   OPENAPI_SPECS_CONFIG=$(cat /app/src/content/docs/openapi-specs-config.json)
-  if ! echo "$OPENAPI_SPECS_CONFIG" | python3 -m json.tool >/dev/null 2>&1; then
+  if ! printf '%s' "$OPENAPI_SPECS_CONFIG" | python3 -m json.tool >/dev/null 2>&1; then
     echo "WARNING: openapi-specs-config.json is invalid JSON — ignoring"
     unset OPENAPI_SPECS_CONFIG
   else
