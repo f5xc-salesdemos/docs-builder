@@ -79,9 +79,9 @@ fi
 
 # Read optional LLMs configuration from llms-config.json (if present in content)
 if [ -z "$LLMS_CONFIG" ] && [ -f /app/src/content/docs/llms-config.json ]; then
-  # Validate JSON by having Python read the file directly (avoids shell
-  # variable/pipe encoding issues in Alpine busybox).
-  if ! python3 -c "import json; json.load(open('/app/src/content/docs/llms-config.json'))" 2>/dev/null; then
+  # Validate JSON using Node.js (guaranteed available in node:24-alpine; python3
+  # may not be installed or may behave unexpectedly in minimal Alpine images).
+  if ! node -e "JSON.parse(require('fs').readFileSync('/app/src/content/docs/llms-config.json','utf8'))" 2>/dev/null; then
     echo "WARNING: llms-config.json is invalid JSON — ignoring, using defaults"
   else
     LLMS_CONFIG=$(cat /app/src/content/docs/llms-config.json)
@@ -93,7 +93,7 @@ fi
 
 # Read optional LLMs federated sites from llms-federated-sites.json (if present in content)
 if [ -z "$LLMS_FEDERATED_SITES" ] && [ -f /app/src/content/docs/llms-federated-sites.json ]; then
-  if ! python3 -c "import json; json.load(open('/app/src/content/docs/llms-federated-sites.json'))" 2>/dev/null; then
+  if ! node -e "JSON.parse(require('fs').readFileSync('/app/src/content/docs/llms-federated-sites.json','utf8'))" 2>/dev/null; then
     echo "WARNING: llms-federated-sites.json is invalid JSON — ignoring, using defaults"
   else
     LLMS_FEDERATED_SITES=$(cat /app/src/content/docs/llms-federated-sites.json)
@@ -105,7 +105,7 @@ fi
 
 # Read optional LLMs federated site categories from llms-federated-site-categories.json
 if [ -z "$LLMS_FEDERATED_SITE_CATEGORIES" ] && [ -f /app/src/content/docs/llms-federated-site-categories.json ]; then
-  if ! python3 -c "import json; json.load(open('/app/src/content/docs/llms-federated-site-categories.json'))" 2>/dev/null; then
+  if ! node -e "JSON.parse(require('fs').readFileSync('/app/src/content/docs/llms-federated-site-categories.json','utf8'))" 2>/dev/null; then
     echo "WARNING: llms-federated-site-categories.json is invalid JSON — ignoring, using defaults"
   else
     LLMS_FEDERATED_SITE_CATEGORIES=$(cat /app/src/content/docs/llms-federated-site-categories.json)
@@ -117,7 +117,7 @@ fi
 
 # Read OpenAPI specs configuration for starlight-openapi plugin
 if [ -z "$OPENAPI_SPECS_CONFIG" ] && [ -f /app/src/content/docs/openapi-specs-config.json ]; then
-  if ! python3 -c "import json; json.load(open('/app/src/content/docs/openapi-specs-config.json'))" 2>/dev/null; then
+  if ! node -e "JSON.parse(require('fs').readFileSync('/app/src/content/docs/openapi-specs-config.json','utf8'))" 2>/dev/null; then
     echo "WARNING: openapi-specs-config.json is invalid JSON — ignoring"
   else
     OPENAPI_SPECS_CONFIG=$(cat /app/src/content/docs/openapi-specs-config.json)
