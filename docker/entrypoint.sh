@@ -79,12 +79,12 @@ fi
 
 # Read optional LLMs configuration from llms-config.json (if present in content)
 if [ -z "$LLMS_CONFIG" ] && [ -f /app/src/content/docs/llms-config.json ]; then
-  LLMS_CONFIG=$(cat /app/src/content/docs/llms-config.json)
-  # Validate JSON before export
-  if ! printf '%s' "$LLMS_CONFIG" | python3 -m json.tool >/dev/null 2>&1; then
+  # Validate JSON by having Python read the file directly (avoids shell
+  # variable/pipe encoding issues in Alpine busybox).
+  if ! python3 -c "import json; json.load(open('/app/src/content/docs/llms-config.json'))" 2>/dev/null; then
     echo "WARNING: llms-config.json is invalid JSON — ignoring, using defaults"
-    unset LLMS_CONFIG
   else
+    LLMS_CONFIG=$(cat /app/src/content/docs/llms-config.json)
     export LLMS_CONFIG
     rm /app/src/content/docs/llms-config.json
     echo "LLMs config loaded"
@@ -93,12 +93,10 @@ fi
 
 # Read optional LLMs federated sites from llms-federated-sites.json (if present in content)
 if [ -z "$LLMS_FEDERATED_SITES" ] && [ -f /app/src/content/docs/llms-federated-sites.json ]; then
-  LLMS_FEDERATED_SITES=$(cat /app/src/content/docs/llms-federated-sites.json)
-  # Validate JSON before export
-  if ! printf '%s' "$LLMS_FEDERATED_SITES" | python3 -m json.tool >/dev/null 2>&1; then
+  if ! python3 -c "import json; json.load(open('/app/src/content/docs/llms-federated-sites.json'))" 2>/dev/null; then
     echo "WARNING: llms-federated-sites.json is invalid JSON — ignoring, using defaults"
-    unset LLMS_FEDERATED_SITES
   else
+    LLMS_FEDERATED_SITES=$(cat /app/src/content/docs/llms-federated-sites.json)
     export LLMS_FEDERATED_SITES
     rm /app/src/content/docs/llms-federated-sites.json
     echo "LLMs federated sites loaded"
@@ -107,12 +105,10 @@ fi
 
 # Read optional LLMs federated site categories from llms-federated-site-categories.json
 if [ -z "$LLMS_FEDERATED_SITE_CATEGORIES" ] && [ -f /app/src/content/docs/llms-federated-site-categories.json ]; then
-  LLMS_FEDERATED_SITE_CATEGORIES=$(cat /app/src/content/docs/llms-federated-site-categories.json)
-
-  if ! printf '%s' "$LLMS_FEDERATED_SITE_CATEGORIES" | python3 -m json.tool >/dev/null 2>&1; then
+  if ! python3 -c "import json; json.load(open('/app/src/content/docs/llms-federated-site-categories.json'))" 2>/dev/null; then
     echo "WARNING: llms-federated-site-categories.json is invalid JSON — ignoring, using defaults"
-    unset LLMS_FEDERATED_SITE_CATEGORIES
   else
+    LLMS_FEDERATED_SITE_CATEGORIES=$(cat /app/src/content/docs/llms-federated-site-categories.json)
     export LLMS_FEDERATED_SITE_CATEGORIES
     rm /app/src/content/docs/llms-federated-site-categories.json
     echo "LLMs federated site categories loaded"
@@ -121,11 +117,10 @@ fi
 
 # Read OpenAPI specs configuration for starlight-openapi plugin
 if [ -z "$OPENAPI_SPECS_CONFIG" ] && [ -f /app/src/content/docs/openapi-specs-config.json ]; then
-  OPENAPI_SPECS_CONFIG=$(cat /app/src/content/docs/openapi-specs-config.json)
-  if ! printf '%s' "$OPENAPI_SPECS_CONFIG" | python3 -m json.tool >/dev/null 2>&1; then
+  if ! python3 -c "import json; json.load(open('/app/src/content/docs/openapi-specs-config.json'))" 2>/dev/null; then
     echo "WARNING: openapi-specs-config.json is invalid JSON — ignoring"
-    unset OPENAPI_SPECS_CONFIG
   else
+    OPENAPI_SPECS_CONFIG=$(cat /app/src/content/docs/openapi-specs-config.json)
     export OPENAPI_SPECS_CONFIG
     rm /app/src/content/docs/openapi-specs-config.json
     echo "OpenAPI specs config loaded (starlight-openapi plugin enabled)"
