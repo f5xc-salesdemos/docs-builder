@@ -9,7 +9,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/react": "^5.0.7",
+    "@astrojs/react": "^6.0.0",
     "@astrojs/starlight": "^0.40.0",
     "@f5xc-salesdemos/docs-theme": "^3.6.0",
     "@f5xc-salesdemos/icons-aws": "*",
