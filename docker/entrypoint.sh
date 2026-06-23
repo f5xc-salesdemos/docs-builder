@@ -22,33 +22,14 @@ else
   EN_ROOT="$DOCS_ROOT"
 fi
 
-# Normalize Terraform-style page_title to Starlight-required title
-# Terraform provider doc generators use page_title; Starlight's docsSchema requires title.
-# Note: This transform handles single-line page_title values only.
-# Multiline YAML block scalar values (|- or >) are not supported.
-# Terraform-provider-f5xc uses single-line titles so this is sufficient.
-find /app/src/content/docs \( -name '*.md' -o -name '*.mdx' \) -exec sh -c '
-  for f do
-    if head -1 "$f" | grep -q "^---"; then
-      if grep -q "^page_title:" "$f" && ! grep -q "^title:" "$f"; then
-        sed -i "s/^page_title:/title:/" "$f"
-      fi
-    fi
-  done
-' sh {} +
-
-# Add frontmatter to .md files that have none (e.g., Terraform provider guide indices)
-# Starlight requires YAML frontmatter with at least a title field.
-find /app/src/content/docs -name '*.md' -exec sh -c '
-  for f do
-    if ! head -1 "$f" | grep -q "^---"; then
-      heading=$(grep -m1 "^# " "$f" | sed "s/^# //")
-      if [ -n "$heading" ]; then
-        { printf "---\ntitle: \"%s\"\n---\n" "$heading"; cat "$f"; } > "${f}.tmp" && mv "${f}.tmp" "$f"
-      fi
-    fi
-  done
-' sh {} +
+# Normalize ingested Markdown frontmatter for Starlight.
+# Terraform-style docs carry a `page_title` (browser-tab title) plus a body `# H1`
+# (visible heading); Starlight renders the frontmatter `title` AS the page <h1>, so
+# feeding both renders the title twice. The normalizer promotes the body H1 to the
+# frontmatter `title` and strips it from the body (single source of truth), and
+# renames a lone `page_title` to `title` on pages that have no body H1. Pages needing
+# no change are left untouched.
+node /app/docker/normalize-frontmatter.mjs /app/src/content/docs
 
 # Placeholder form: if content repo provides placeholders.json, activate
 if [ -f /app/src/content/docs/placeholders.json ]; then
