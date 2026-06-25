@@ -12,7 +12,7 @@
 [हिन्दी](https://f5xc-salesdemos.github.io/docs-builder/hi/) |
 [ไทย](https://f5xc-salesdemos.github.io/docs-builder/th/)
 
-# f5xc Docs Builder
+# xcsh Docs Builder
 
 [![GitHub Pages Deploy](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/github-pages-deploy.yml/badge.svg)](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/github-pages-deploy.yml)
 [![Repository Settings](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/enforce-repo-settings.yml/badge.svg)](https://github.com/f5xc-salesdemos/docs-builder/actions/workflows/enforce-repo-settings.yml)
