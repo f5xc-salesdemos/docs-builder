@@ -24,7 +24,7 @@ docker run --rm -it \
   -v "$(pwd)/docs:/content/docs" \
   -p 4321:4321 \
   -e MODE=dev \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 서버가 시작되면 **http://localhost:4321**을 엽니다.
@@ -52,7 +52,7 @@ MDX에서 루트 상대 경로로 참조합니다:
 **오래된 이미지인 경우** — 최신 버전을 가져옵니다:
 
 ```sh
-docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+docker pull ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 ## 추가 자료

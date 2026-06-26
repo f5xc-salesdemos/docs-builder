@@ -61,8 +61,8 @@ npm update
 ### ขั้นตอนที่ 2: คัดลอกการตั้งค่า Theme
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
 คัดลอก `astro.config.mjs` และ `content.config.ts` จาก theme package โดย theme เป็นแหล่งข้อมูลเดียวที่เป็นต้นฉบับสำหรับการตั้งค่า Astro — ดู [สถาปัตยกรรม](../architecture/) สำหรับการออกแบบระบบ theme
@@ -143,7 +143,7 @@ fi
 docker run --rm \
   -v "$(pwd)/docs:/content/docs" \
   -v "$(pwd)/output:/output" \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 คำสั่งนี้จะ mount ไดเรกทอรี `docs/` ในเครื่องเป็นเนื้อหา และเขียนเว็บไซต์ที่ build แล้วไปยัง `output/`
@@ -156,8 +156,8 @@ docker run --rm \
 
 ```sh
 npm ci
-cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
-cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+cp node_modules/@f5-sales-demo/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5-sales-demo/docs-theme/src/content.config.ts src/content.config.ts
 # Copy some test content into the content collection
 cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
@@ -178,7 +178,7 @@ DOCS_TITLE="Dev Test" npx astro dev --host
 Image ถูกเผยแพร่ไปยัง GitHub Container Registry:
 
 ```
-ghcr.io/f5xc-salesdemos/docs-builder
+ghcr.io/f5-sales-demo/docs-builder
 ```
 
 มีการ push สองแท็กในทุกการ build:

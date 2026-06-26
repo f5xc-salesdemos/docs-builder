@@ -59,8 +59,8 @@ npm update
 ### الخطوة 2: نسخ إعدادات القالب
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
 ينسخ `astro.config.mjs` و `content.config.ts` من حزمة القالب. القالب هو المصدر الوحيد للحقيقة لإعدادات Astro — راجع [البنية المعمارية](../architecture/) لتصميم نظام القالب.
@@ -141,7 +141,7 @@ fi
 docker run --rm \
   -v "$(pwd)/docs:/content/docs" \
   -v "$(pwd)/output:/output" \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 يربط هذا مجلد `docs/` المحلي كمحتوى ويكتب الموقع المبني إلى `output/`.
@@ -154,8 +154,8 @@ docker run --rm \
 
 ```sh
 npm ci
-cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
-cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+cp node_modules/@f5-sales-demo/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5-sales-demo/docs-theme/src/content.config.ts src/content.config.ts
 # Copy some test content into the content collection
 cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
@@ -176,7 +176,7 @@ DOCS_TITLE="Dev Test" npx astro dev --host
 تُنشر الصورة في سجل حاويات GitHub:
 
 ```
-ghcr.io/f5xc-salesdemos/docs-builder
+ghcr.io/f5-sales-demo/docs-builder
 ```
 
 يتم دفع وسمين عند كل بناء:

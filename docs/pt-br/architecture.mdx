@@ -41,13 +41,13 @@ Isso significa que o repositório do builder é distribuído com um diretório `
 O tema Starlight é publicado como um pacote npm separado. O `package.json` usa um alias do npm para mapear um nome curto para o pacote no registro com escopo:
 
 ```json
-"@f5xc-salesdemos/docs-theme": "^1.29.0"
+"@f5-sales-demo/docs-theme": "^1.29.0"
 ```
 
 O pacote do tema é proprietário do `astro.config.mjs`. No momento do build, o entrypoint o copia para a raiz do projeto:
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
 Isso mantém a configuração centralizada — os repositórios de conteúdo e o próprio builder não mantêm sua própria configuração do Astro.
@@ -94,7 +94,7 @@ O diagrama a seguir mostra o pipeline de build completo quando o container Docke
 flowchart LR
     A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
     B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
-    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5-sales-demo/docs-theme]
     E -->|cp astro.config| F[astro.config.mjs]
     C --> G[astro build]
     F --> G

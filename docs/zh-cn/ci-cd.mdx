@@ -35,7 +35,7 @@ on:
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 权限：`contents: read`、`packages: read`、`pages: write`、`id-token: write`。使用并发组 `pages`，设置 `cancel-in-progress: true` 以避免过时的部署。
@@ -104,7 +104,7 @@ on:
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -115,7 +115,7 @@ jobs:
 
 ### 集中式模板
 
-`f5xc-salesdemos/docs-control` 仓库是以下内容的唯一事实来源：
+`f5-sales-demo/docs-control` 仓库是以下内容的唯一事实来源：
 
 - 可复用工作流定义（文档部署、仓库设置强制执行）
 - 在组织内所有仓库间同步的托管文件

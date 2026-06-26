@@ -35,7 +35,7 @@ on:
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 권한: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. 오래된 배포를 방지하기 위해 `cancel-in-progress: true`로 설정된 `pages` 동시성 그룹을 사용합니다.
@@ -104,7 +104,7 @@ on:
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -115,7 +115,7 @@ jobs:
 
 ### 중앙 집중식 템플릿
 
-`f5xc-salesdemos/docs-control` 저장소는 다음 항목의 단일 진실 공급원(Single Source of Truth)입니다:
+`f5-sales-demo/docs-control` 저장소는 다음 항목의 단일 진실 공급원(Single Source of Truth)입니다:
 
 - 재사용 가능한 워크플로우 정의(문서 배포, 저장소 설정 적용)
 - 조직 내 모든 저장소에 동기화되는 관리 파일

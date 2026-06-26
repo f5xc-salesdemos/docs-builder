@@ -59,8 +59,8 @@ npm update
 ### 2단계: 테마 설정 복사
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
 테마 패키지에서 `astro.config.mjs`와 `content.config.ts`를 복사합니다. 테마는 Astro 설정의 단일 진실 공급원(single source of truth)입니다 — 테마 시스템 설계에 대해서는 [아키텍처](../architecture/)를 참조하세요.
@@ -141,7 +141,7 @@ Docker를 사용하여 로컬에서 문서를 빌드하려면:
 docker run --rm \
   -v "$(pwd)/docs:/content/docs" \
   -v "$(pwd)/output:/output" \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 이 명령은 로컬 `docs/` 디렉토리를 콘텐츠로 마운트하고 빌드된 사이트를 `output/`에 출력합니다.
@@ -154,8 +154,8 @@ docker run --rm \
 
 ```sh
 npm ci
-cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
-cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+cp node_modules/@f5-sales-demo/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5-sales-demo/docs-theme/src/content.config.ts src/content.config.ts
 # Copy some test content into the content collection
 cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
@@ -176,7 +176,7 @@ DOCS_TITLE="Dev Test" npx astro dev --host
 이미지는 GitHub Container Registry에 게시됩니다:
 
 ```
-ghcr.io/f5xc-salesdemos/docs-builder
+ghcr.io/f5-sales-demo/docs-builder
 ```
 
 매 빌드마다 두 개의 태그가 푸시됩니다:

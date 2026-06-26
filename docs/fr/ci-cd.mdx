@@ -37,7 +37,7 @@ Délègue à un workflow réutilisable dans le dépôt de modèles :
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 Permissions : `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Utilise le groupe de concurrence `pages` avec `cancel-in-progress: true` pour éviter les déploiements obsolètes.
@@ -106,7 +106,7 @@ Délègue à un workflow réutilisable dans le dépôt de modèles :
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -117,7 +117,7 @@ S'exécute toutes les 6 heures et lors des modifications du fichier de configura
 
 ### Modèle centralisé
 
-Le dépôt `f5xc-salesdemos/docs-control` est la source unique de vérité pour :
+Le dépôt `f5-sales-demo/docs-control` est la source unique de vérité pour :
 
 - Les définitions de workflows réutilisables (déploiement de documentation, application des paramètres du dépôt)
 - Les fichiers gérés synchronisés à travers tous les dépôts de l'organisation

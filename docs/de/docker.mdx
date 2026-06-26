@@ -61,8 +61,8 @@ Stellt sicher, dass das Theme-Paket und alle Abhängigkeiten auf ihren neuesten 
 ### Schritt 2: Theme-Konfiguration kopieren
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
 Kopiert `astro.config.mjs` und `content.config.ts` aus dem Theme-Paket. Das Theme ist die einzige Quelle der Wahrheit für die Astro-Konfiguration — siehe [Architektur](../architecture/) für das Design des Theme-Systems.
@@ -143,7 +143,7 @@ Um Dokumentation lokal mit Docker zu erstellen:
 docker run --rm \
   -v "$(pwd)/docs:/content/docs" \
   -v "$(pwd)/output:/output" \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 Dies mountet das lokale `docs/`-Verzeichnis als Content und schreibt die erstellte Website nach `output/`.
@@ -156,8 +156,8 @@ Wenn Sie am Builder selbst arbeiten (Komponenten, Plugins, Theme-Integration), k
 
 ```sh
 npm ci
-cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
-cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+cp node_modules/@f5-sales-demo/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5-sales-demo/docs-theme/src/content.config.ts src/content.config.ts
 # Copy some test content into the content collection
 cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
@@ -178,7 +178,7 @@ DOCS_TITLE="Dev Test" npx astro dev --host
 Das Image wird in der GitHub Container Registry veröffentlicht:
 
 ```
-ghcr.io/f5xc-salesdemos/docs-builder
+ghcr.io/f5-sales-demo/docs-builder
 ```
 
 Bei jedem Build werden zwei Tags gepusht:

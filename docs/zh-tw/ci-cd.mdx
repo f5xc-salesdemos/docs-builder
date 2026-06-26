@@ -35,7 +35,7 @@ on:
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 權限：`contents: read`、`packages: read`、`pages: write`、`id-token: write`。使用並行群組 `pages` 並設定 `cancel-in-progress: true` 以避免過時的部署。
@@ -104,7 +104,7 @@ on:
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -115,7 +115,7 @@ jobs:
 
 ### 集中式範本
 
-`f5xc-salesdemos/docs-control` 儲存庫是以下項目的單一事實來源：
+`f5-sales-demo/docs-control` 儲存庫是以下項目的單一事實來源：
 
 - 可重用工作流程定義（文件部署、儲存庫設定強制執行）
 - 同步至組織內所有儲存庫的受管理檔案

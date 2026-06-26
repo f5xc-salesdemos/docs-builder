@@ -37,7 +37,7 @@ Delega a un flujo de trabajo reutilizable en el repositorio de plantilla:
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 Permisos: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Utiliza el grupo de concurrencia `pages` con `cancel-in-progress: true` para evitar despliegues obsoletos.
@@ -106,7 +106,7 @@ Delega a un flujo de trabajo reutilizable en el repositorio de plantilla:
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -117,7 +117,7 @@ Se ejecuta cada 6 horas y ante cambios en el archivo de configuración de ajuste
 
 ### Plantilla Centralizada
 
-El repositorio `f5xc-salesdemos/docs-control` es la fuente única de verdad para:
+El repositorio `f5-sales-demo/docs-control` es la fuente única de verdad para:
 
 - Definiciones de flujos de trabajo reutilizables (despliegue de documentación, aplicación de configuración del repositorio)
 - Archivos gestionados sincronizados en todos los repositorios de la organización

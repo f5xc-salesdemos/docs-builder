@@ -37,7 +37,7 @@ Delega a un workflow riutilizzabile nel repository template:
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 Permessi: `contents: read`, `packages: read`, `pages: write`, `id-token: write`. Utilizza il gruppo di concorrenza `pages` con `cancel-in-progress: true` per evitare distribuzioni obsolete.
@@ -106,7 +106,7 @@ Delega a un workflow riutilizzabile nel repository template:
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -117,7 +117,7 @@ Viene eseguito ogni 6 ore e in caso di modifiche al file di configurazione delle
 
 ### Template Centralizzato
 
-Il repository `f5xc-salesdemos/docs-control` è l'unica fonte di verità per:
+Il repository `f5-sales-demo/docs-control` è l'unica fonte di verità per:
 
 - Definizioni di workflow riutilizzabili (deploy della documentazione, applicazione delle impostazioni del repository)
 - File gestiti sincronizzati tra tutti i repository dell'organizzazione

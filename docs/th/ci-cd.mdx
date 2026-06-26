@@ -35,7 +35,7 @@ on:
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 สิทธิ์: `contents: read`, `packages: read`, `pages: write`, `id-token: write` ใช้กลุ่ม concurrency `pages` พร้อม `cancel-in-progress: true` เพื่อหลีกเลี่ยงการเดพลอยที่ล้าสมัย
@@ -104,7 +104,7 @@ on:
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -115,7 +115,7 @@ jobs:
 
 ### เทมเพลตแบบรวมศูนย์
 
-รีโพซิทอรี `f5xc-salesdemos/docs-control` เป็นแหล่งข้อมูลความจริงเดียวสำหรับ:
+รีโพซิทอรี `f5-sales-demo/docs-control` เป็นแหล่งข้อมูลความจริงเดียวสำหรับ:
 
 - คำจำกัดความเวิร์กโฟลว์ที่ใช้ซ้ำได้ (เดพลอยเอกสาร, บังคับใช้การตั้งค่ารีโพซิทอรี)
 - ไฟล์ที่จัดการซึ่งซิงค์ข้ามรีโพซิทอรีทั้งหมดในองค์กร

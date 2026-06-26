@@ -21,7 +21,7 @@ docker run --rm -it \
   -v "$(pwd)/docs:/content/docs" \
   -p 4321:4321 \
   -e MODE=dev \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 Open **http://localhost:4321** once the server starts.
@@ -49,7 +49,7 @@ Reference them in your MDX with a root-relative path:
 **Stale image** — Pull the latest version:
 
 ```sh
-docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+docker pull ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 ## Further Reading

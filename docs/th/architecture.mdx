@@ -41,13 +41,13 @@ cp -r "$CONTENT_DIR"/* /app/src/content/docs/
 ธีม Starlight ถูกเผยแพร่เป็นแพ็กเกจ npm แยกต่างหาก `package.json` ใช้ npm alias เพื่อแมปชื่อย่อไปยังแพ็กเกจในรีจิสทรีที่กำหนดขอบเขต:
 
 ```json
-"@f5xc-salesdemos/docs-theme": "^1.29.0"
+"@f5-sales-demo/docs-theme": "^1.29.0"
 ```
 
 แพ็กเกจธีมเป็นเจ้าของ `astro.config.mjs` ในเวลา build สคริปต์ entrypoint จะคัดลอกไปยังรูทของโปรเจกต์:
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
 วิธีนี้ทำให้การกำหนดค่ารวมศูนย์อยู่ที่เดียว — รีโปเนื้อหาและตัวสร้างเองไม่ต้องดูแลไฟล์ Astro config ของตัวเอง
@@ -94,7 +94,7 @@ export const collections = {
 flowchart LR
     A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
     B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
-    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5-sales-demo/docs-theme]
     E -->|cp astro.config| F[astro.config.mjs]
     C --> G[astro build]
     F --> G
