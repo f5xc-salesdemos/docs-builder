@@ -33,7 +33,7 @@
     "@iconify-json/tabler": "^1.2.35",
     "@lucide/astro": "^1.21.0",
     "@astrojs/markdown-remark": ">=7.2.0",
-    "@scalar/api-reference-react": "^0.9.48",
+    "@scalar/api-reference-react": "^0.9.49",
     "starlight-openapi": "^0.25.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
@@ -43,7 +43,7 @@
     "sharp": "^0.35.2",
     "@f5xc-salesdemos/starlight-llms-txt": "^1.3.1",
     "unist-util-visit": "^5.1.0",
-    "unocss": "^66.7.2"
+    "unocss": "^66.7.3"
   },
   "overrides": {
     "dompurify": "^3.4.0",
