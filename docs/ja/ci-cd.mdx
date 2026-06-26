@@ -35,7 +35,7 @@ on:
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 パーミッション: `contents: read`、`packages: read`、`pages: write`、`id-token: write`。古いデプロイを避けるため、`cancel-in-progress: true` を設定した `pages` 同時実行グループを使用します。
@@ -104,7 +104,7 @@ on:
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -115,7 +115,7 @@ jobs:
 
 ### 集中型テンプレート
 
-`f5xc-salesdemos/docs-control` リポジトリは以下の唯一の信頼できるソースです：
+`f5-sales-demo/docs-control` リポジトリは以下の唯一の信頼できるソースです：
 
 - 再利用可能なワークフロー定義（ドキュメントデプロイ、リポジトリ設定の適用）
 - 組織内のすべてのリポジトリに同期されるマネージドファイル

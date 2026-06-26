@@ -35,7 +35,7 @@ on:
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 الصلاحيات: `contents: read`، `packages: read`، `pages: write`، `id-token: write`. يستخدم مجموعة تزامن `pages` مع `cancel-in-progress: true` لتجنب عمليات النشر المتقادمة.
@@ -104,7 +104,7 @@ on:
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -115,7 +115,7 @@ jobs:
 
 ### القالب المركزي
 
-مستودع `f5xc-salesdemos/docs-control` هو المصدر الوحيد للحقيقة لـ:
+مستودع `f5-sales-demo/docs-control` هو المصدر الوحيد للحقيقة لـ:
 
 - تعريفات سير العمل القابلة لإعادة الاستخدام (نشر التوثيق، فرض إعدادات المستودع)
 - الملفات المُدارة المُتزامَنة عبر جميع المستودعات في المنظمة

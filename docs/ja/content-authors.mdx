@@ -24,7 +24,7 @@ docker run --rm -it \
   -v "$(pwd)/docs:/content/docs" \
   -p 4321:4321 \
   -e MODE=dev \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 サーバーが起動したら **http://localhost:4321** を開きます。
@@ -52,7 +52,7 @@ MDXではルート相対パスで参照します：
 **古いイメージ** — 最新バージョンをプルします：
 
 ```sh
-docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+docker pull ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 ## 関連資料

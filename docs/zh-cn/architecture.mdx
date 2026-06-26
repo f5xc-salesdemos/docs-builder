@@ -39,13 +39,13 @@ cp -r "$CONTENT_DIR"/* /app/src/content/docs/
 Starlight 主题作为独立的 npm 包发布。`package.json` 使用 npm 别名将短名称映射到作用域注册表包：
 
 ```json
-"@f5xc-salesdemos/docs-theme": "^1.29.0"
+"@f5-sales-demo/docs-theme": "^1.29.0"
 ```
 
 主题包拥有 `astro.config.mjs`。在构建时，入口脚本将其复制到项目根目录：
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
 这使得配置保持集中管理——内容仓库和构建器本身都不需要维护自己的 Astro 配置。
@@ -92,7 +92,7 @@ export const collections = {
 flowchart LR
     A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
     B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
-    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5-sales-demo/docs-theme]
     E -->|cp astro.config| F[astro.config.mjs]
     C --> G[astro build]
     F --> G

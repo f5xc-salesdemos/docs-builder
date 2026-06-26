@@ -41,13 +41,13 @@ Cela signifie que le dépôt du générateur lui-même est livré avec un réper
 Le thème Starlight est publié en tant que package npm distinct. `package.json` utilise un alias npm pour mapper un nom court vers le package du registre scopé :
 
 ```json
-"@f5xc-salesdemos/docs-theme": "^1.29.0"
+"@f5-sales-demo/docs-theme": "^1.29.0"
 ```
 
 Le package de thème possède `astro.config.mjs`. Au moment du build, le point d'entrée le copie à la racine du projet :
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
 Cela permet de centraliser la configuration — les dépôts de contenu et le générateur lui-même ne maintiennent pas leur propre configuration Astro.
@@ -94,7 +94,7 @@ Le diagramme suivant illustre le pipeline de build de bout en bout lorsque le co
 flowchart LR
     A[Content Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
     B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
-    D[npm registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    D[npm registry] -->|npm install| E[node_modules/<br/>@f5-sales-demo/docs-theme]
     E -->|cp astro.config| F[astro.config.mjs]
     C --> G[astro build]
     F --> G

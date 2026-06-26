@@ -41,13 +41,13 @@ Das bedeutet, dass das Builder-Repo selbst mit einem leeren `src/content/docs/`-
 Das Starlight-Theme wird als separates npm-Paket veröffentlicht. `package.json` verwendet einen npm-Alias, um einen Kurznamen auf das Paket in der Scoped-Registry abzubilden:
 
 ```json
-"@f5xc-salesdemos/docs-theme": "^1.29.0"
+"@f5-sales-demo/docs-theme": "^1.29.0"
 ```
 
 Das Theme-Paket besitzt `astro.config.mjs`. Zur Build-Zeit kopiert das Entrypoint-Skript diese Datei in das Projektstammverzeichnis:
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
 Dies hält die Konfiguration zentralisiert — Content-Repos und der Builder selbst pflegen keine eigene Astro-Konfiguration.
@@ -94,7 +94,7 @@ Das folgende Diagramm zeigt die End-to-End-Build-Pipeline, wenn der Docker-Conta
 flowchart LR
     A[Content-Repo<br/>docs/] -->|mount| B[Container<br/>/content/docs]
     B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
-    D[npm-Registry] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    D[npm-Registry] -->|npm install| E[node_modules/<br/>@f5-sales-demo/docs-theme]
     E -->|cp astro.config| F[astro.config.mjs]
     C --> G[astro build]
     F --> G

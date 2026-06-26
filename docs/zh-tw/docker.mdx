@@ -59,8 +59,8 @@ npm update
 ### 步驟 2：複製佈景主題設定
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
 從佈景主題套件複製 `astro.config.mjs` 和 `content.config.ts`。佈景主題是 Astro 設定的唯一真實來源——請參閱[架構](../architecture/)了解佈景主題系統設計。
@@ -141,7 +141,7 @@ fi
 docker run --rm \
   -v "$(pwd)/docs:/content/docs" \
   -v "$(pwd)/output:/output" \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 這會將本地的 `docs/` 目錄作為內容掛載，並將建置後的網站寫入 `output/`。
@@ -154,8 +154,8 @@ docker run --rm \
 
 ```sh
 npm ci
-cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
-cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+cp node_modules/@f5-sales-demo/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5-sales-demo/docs-theme/src/content.config.ts src/content.config.ts
 # Copy some test content into the content collection
 cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
@@ -176,7 +176,7 @@ DOCS_TITLE="Dev Test" npx astro dev --host
 映像檔發布至 GitHub Container Registry：
 
 ```
-ghcr.io/f5xc-salesdemos/docs-builder
+ghcr.io/f5-sales-demo/docs-builder
 ```
 
 每次建置時會推送兩個標籤：

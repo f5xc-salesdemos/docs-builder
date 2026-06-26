@@ -24,7 +24,7 @@ docker run --rm -it \
   -v "$(pwd)/docs:/content/docs" \
   -p 4321:4321 \
   -e MODE=dev \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 Ouvrez **http://localhost:4321** une fois le serveur démarré.
@@ -52,7 +52,7 @@ Référencez-les dans votre MDX avec un chemin absolu depuis la racine :
 **Image obsolète** — Récupérez la dernière version :
 
 ```sh
-docker pull ghcr.io/f5xc-salesdemos/docs-builder:latest
+docker pull ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 ## Pour aller plus loin

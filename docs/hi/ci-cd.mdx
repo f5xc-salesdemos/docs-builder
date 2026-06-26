@@ -35,7 +35,7 @@ on:
 ```yaml
 jobs:
   docs:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/github-pages-deploy.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/github-pages-deploy.yml@main
 ```
 
 अनुमतियाँ: `contents: read`, `packages: read`, `pages: write`, `id-token: write`। पुरानी डिप्लॉयमेंट से बचने के लिए `cancel-in-progress: true` के साथ कंकरेंसी ग्रुप `pages` का उपयोग करता है।
@@ -104,7 +104,7 @@ on:
 ```yaml
 jobs:
   enforce:
-    uses: f5xc-salesdemos/docs-control/.github/workflows/enforce-repo-settings.yml@main
+    uses: f5-sales-demo/docs-control/.github/workflows/enforce-repo-settings.yml@main
     secrets:
       repo-admin-token: ${{ secrets.REPO_ADMIN_TOKEN }}
 ```
@@ -115,7 +115,7 @@ jobs:
 
 ### केंद्रीकृत टेम्पलेट
 
-`f5xc-salesdemos/docs-control` रिपॉज़िटरी इनके लिए एकमात्र सत्य का स्रोत है:
+`f5-sales-demo/docs-control` रिपॉज़िटरी इनके लिए एकमात्र सत्य का स्रोत है:
 
 - रीयूज़ेबल वर्कफ़्लो परिभाषाएँ (डॉक्स डिप्लॉय, रिपो सेटिंग्स एनफोर्समेंट)
 - संगठन में सभी रिपो में सिंक की गई प्रबंधित फ़ाइलें

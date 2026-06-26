@@ -61,8 +61,8 @@ npm update
 ### चरण 2: थीम कॉन्फ़िग कॉपी करें
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts /app/src/content.config.ts
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/src/content.config.ts /app/src/content.config.ts
 ```
 
 थीम पैकेज से `astro.config.mjs` और `content.config.ts` कॉपी करता है। Astro कॉन्फ़िगरेशन के लिए थीम एकमात्र स्रोत है — थीम सिस्टम डिज़ाइन के लिए [आर्किटेक्चर](../architecture/) देखें।
@@ -143,7 +143,7 @@ Docker का उपयोग करके लोकली डॉक्यूम
 docker run --rm \
   -v "$(pwd)/docs:/content/docs" \
   -v "$(pwd)/output:/output" \
-  ghcr.io/f5xc-salesdemos/docs-builder:latest
+  ghcr.io/f5-sales-demo/docs-builder:latest
 ```
 
 यह लोकल `docs/` डायरेक्टरी को कंटेंट के रूप में माउंट करता है और बिल्ड की गई साइट को `output/` में लिखता है।
@@ -156,8 +156,8 @@ docker run --rm \
 
 ```sh
 npm ci
-cp node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs astro.config.mjs
-cp node_modules/@f5xc-salesdemos/docs-theme/src/content.config.ts src/content.config.ts
+cp node_modules/@f5-sales-demo/docs-theme/astro.config.mjs astro.config.mjs
+cp node_modules/@f5-sales-demo/docs-theme/src/content.config.ts src/content.config.ts
 # Copy some test content into the content collection
 cp -r /path/to/test-content/* src/content/docs/
 DOCS_TITLE="Dev Test" npx astro dev --host
@@ -178,7 +178,7 @@ DOCS_TITLE="Dev Test" npx astro dev --host
 इमेज GitHub Container Registry पर प्रकाशित की जाती है:
 
 ```
-ghcr.io/f5xc-salesdemos/docs-builder
+ghcr.io/f5-sales-demo/docs-builder
 ```
 
 हर बिल्ड पर दो टैग पुश किए जाते हैं:

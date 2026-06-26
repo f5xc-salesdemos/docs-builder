@@ -39,13 +39,13 @@ cp -r "$CONTENT_DIR"/* /app/src/content/docs/
 Starlight 테마는 별도의 npm 패키지로 게시됩니다. `package.json`은 npm 별칭을 사용하여 짧은 이름을 스코프 레지스트리 패키지에 매핑합니다:
 
 ```json
-"@f5xc-salesdemos/docs-theme": "^1.29.0"
+"@f5-sales-demo/docs-theme": "^1.29.0"
 ```
 
 테마 패키지가 `astro.config.mjs`를 소유합니다. 빌드 시점에 진입점이 이를 프로젝트 루트로 복사합니다:
 
 ```sh
-cp /app/node_modules/@f5xc-salesdemos/docs-theme/astro.config.mjs /app/astro.config.mjs
+cp /app/node_modules/@f5-sales-demo/docs-theme/astro.config.mjs /app/astro.config.mjs
 ```
 
 이를 통해 설정을 중앙 집중화합니다 — 콘텐츠 저장소와 빌더 자체는 자체 Astro 설정을 유지하지 않습니다.
@@ -92,7 +92,7 @@ export const collections = {
 flowchart LR
     A[콘텐츠 저장소<br/>docs/] -->|마운트| B[컨테이너<br/>/content/docs]
     B -->|entrypoint.sh<br/>cp| C[src/content/docs/]
-    D[npm 레지스트리] -->|npm install| E[node_modules/<br/>@f5xc-salesdemos/docs-theme]
+    D[npm 레지스트리] -->|npm install| E[node_modules/<br/>@f5-sales-demo/docs-theme]
     E -->|cp astro.config| F[astro.config.mjs]
     C --> G[astro build]
     F --> G
